@@ -38,43 +38,44 @@ async function buildDemoSite(lead, onProgress) {
   const type = (lead.type||'business').replace(/_/g,' ');
 
   const imgSeed = lead.name.replace(/[^a-z0-9]/gi,'-').toLowerCase().substring(0,20);
-  const prompt = `You are a world-class web designer. Build a complete, stunning demo website for a local business owner.
+  const prompt = `Build a complete single-page demo website for a local business. Use Tailwind CSS CDN for all styling — no custom <style> block needed.
 
 Business: "${lead.name}"
 Type: ${type}
 Address: ${lead.address}
 Phone: ${lead.phone !== 'N/A' ? lead.phone : 'Call us'}
-Google Rating: ${lead.rating !== 'N/A' ? lead.rating+'/5 ('+lead.reviews+' reviews)' : 'not yet rated'}
+Rating: ${lead.rating !== 'N/A' ? lead.rating+'/5 ('+lead.reviews+' reviews)' : 'not yet rated'}
 
-IMAGES — use these exact Picsum URLs (they always work, no broken images):
-- Hero background: https://picsum.photos/seed/${imgSeed}/1600/900
-- About section photo: https://picsum.photos/seed/${imgSeed}2/800/600
-- Gallery/feature image 1: https://picsum.photos/seed/${imgSeed}3/600/400
-- Gallery/feature image 2: https://picsum.photos/seed/${imgSeed}4/600/400
-- Gallery/feature image 3: https://picsum.photos/seed/${imgSeed}5/600/400
+Use these Picsum image URLs (always work, never broken):
+- Hero bg: https://picsum.photos/seed/${imgSeed}/1600/900
+- About photo: https://picsum.photos/seed/${imgSeed}2/800/500
+- Feature 1: https://picsum.photos/seed/${imgSeed}3/600/400
+- Feature 2: https://picsum.photos/seed/${imgSeed}4/600/400
+- Feature 3: https://picsum.photos/seed/${imgSeed}5/600/400
 
-SECTIONS (build all of these in order):
-1. <head> — Google Fonts CDN (2 fonts matching the business), SEO meta tags, all CSS in <style>
-2. Sticky nav — logo left, links right (Home, About, Services, Gallery, Reviews, Contact)
-3. Hero — full-screen background image with a DARK SEMI-TRANSPARENT OVERLAY (rgba 0,0,0,0.5) so white text is always visible. Large headline, subheadline, two CTA buttons.
-4. About — split layout: left side has the about image, right side has 3 paragraphs of real compelling copy about this specific business
-5. Services — 6 cards in a grid, each with an icon (use emoji), service name, short description, realistic price
-6. Gallery — 3 images in a horizontal row with rounded corners and hover zoom effect
-7. Testimonials — 3 review cards with star ratings (★★★★★), customer name, and 2-3 sentences of genuine-sounding review text
-8. Contact — address, phone, hours, and a "Get Directions" button linking to Google Maps
-9. Footer — business name, tagline, © 2025, social media icon links
-10. Floating "Book Now" / "Call Now" button fixed bottom-right, always visible
+Build these sections IN ORDER, completing each fully before moving on:
 
-CSS RULES:
-- Never use white text on white or light backgrounds — always ensure contrast
-- Hero text must be white (there is a dark overlay on the image)
-- Use CSS custom properties (--primary, --accent, --dark, --light) for the color palette
-- Smooth scroll behavior on <html>
-- Fade-in animation on sections using IntersectionObserver
-- Fully mobile responsive using CSS Grid and Flexbox
-- Cards have subtle box-shadow and hover lift effect
+1. HEAD: Include Tailwind CDN (<script src="https://cdn.tailwindcss.com"></script>), Google Fonts link for 1 elegant font, and basic meta tags.
 
-CRITICAL: Output ONLY the raw HTML. Start with <!DOCTYPE html>. End with </html>. No markdown, no explanation, no code fences.`;
+2. NAV: Fixed top, white bg, shadow. Logo (business name) on left, nav links on right (About, Services, Reviews, Contact). Mobile hamburger menu with JS toggle.
+
+3. HERO: Full-height section. Background image (Hero bg URL above) with absolute dark overlay (bg-black bg-opacity-50). Centered white text: big bold headline relevant to the business, 1-line subtext, two buttons (primary CTA + secondary outline).
+
+4. SERVICES: Section with gray-50 bg. Title "Our Services". 3-column grid of 6 cards — each card has an emoji icon, service name specific to this business type, one-line description, and a realistic price. Cards have white bg, rounded-xl, shadow-md, hover:shadow-lg.
+
+5. ABOUT: Two-column layout. Left: the About photo img tag (800x500). Right: heading "About Us" + 2 paragraphs of real copy about this specific business + a "Learn More" button.
+
+6. GALLERY: Three images side by side (Feature 1, 2, 3) each with rounded-xl, overflow-hidden, hover scale effect via inline style or Tailwind.
+
+7. REVIEWS: Dark bg section (gray-900). Title in white. Three review cards with white bg, rounded-xl, padding. Each has ★★★★★ in yellow, reviewer name in bold, 2-sentence review text relevant to the business.
+
+8. CONTACT: Light bg. Show address, phone, and business hours. Big "Call Now" button and "Get Directions" button (href to Google Maps search for the address).
+
+9. FOOTER: Dark bg, white text. Business name, short tagline, © 2025.
+
+10. FLOATING BUTTON: Fixed bottom-right, z-50, rounded-full, primary color, "Book Now" or "Call Now" with phone number.
+
+Output ONLY raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown. No explanation.`;
 
   let html = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -82,7 +83,7 @@ CRITICAL: Output ONLY the raw HTML. Start with <!DOCTYPE html>. End with </html>
       onProgress({ status:'building', message:`🤖 Calling Claude Sonnet (attempt ${attempt}/2)... this takes 30-60 seconds` });
       const msg = await client.messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 12000,
+        max_tokens: 16000,
         messages: [{ role:'user', content: prompt }]
       });
       onProgress({ status:'building', message:`📥 Response received — validating HTML...` });
