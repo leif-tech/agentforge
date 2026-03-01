@@ -1,8 +1,11 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+// Load .env from leads dir (persisted volume) first, then fallback to local
+const leadsEnv = path.join(__dirname, 'leads', '.env');
+const localEnv = path.join(__dirname, '.env');
+require('dotenv').config({ path: fs.existsSync(leadsEnv) ? leadsEnv : localEnv });
+const express = require('express');
+const cors = require('cors');
 
 const { runScout }              = require('./agents/scout');
 const { buildDemoSite }         = require('./agents/builder');
@@ -289,7 +292,7 @@ app.get('/api/settings', (req,res) => res.json({
 
 app.post('/api/settings', (req,res) => {
   const { anthropicKey, smtpHost, smtpPort, smtpUser, smtpPass, hunterKey, cloudflareAccountId, cloudflareApiToken } = req.body;
-  const ep = path.join(__dirname,'.env');
+  const ep = fs.existsSync(path.join(__dirname,'leads')) ? path.join(__dirname,'leads','.env') : path.join(__dirname,'.env');
   let env = fs.existsSync(ep)?fs.readFileSync(ep,'utf8'):'';
   const set = (k,v) => {
     if (!v) return;
