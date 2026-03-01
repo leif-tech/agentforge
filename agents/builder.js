@@ -79,7 +79,7 @@ CRITICAL: Output ONLY the raw HTML. Start with <!DOCTYPE html>. End with </html>
   let html = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      onProgress({ status:'building', message:`🤖 Calling Claude Haiku (attempt ${attempt}/2)... this takes 20-40 seconds` });
+      onProgress({ status:'building', message:`🤖 Calling Claude Sonnet (attempt ${attempt}/2)... this takes 30-60 seconds` });
       const msg = await client.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 12000,
