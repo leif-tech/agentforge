@@ -146,7 +146,6 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     socketTimeout: 60000
   });
 
-  await transporter.verify();
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
   let samplesHtml = '';
