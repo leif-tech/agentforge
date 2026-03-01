@@ -770,17 +770,14 @@ tr:hover td{background:rgba(0,229,255,.03)}
       <button class="sbtn" onclick="saveSet('cloudflare')">Save Credentials</button>
     </div>
     <div class="scard">
-      <div class="scard-t">◎ SMTP Email <span class="ss-badge off" id="ss-sm">Not Set</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="f"><span>SMTP Host</span><input type="text" id="set-sh" placeholder="smtp.gmail.com"></div>
-        <div class="f"><span>Port</span><input type="text" id="set-sp" value="587"></div>
-        <div class="f"><span>Email Address</span><input type="email" id="set-su" placeholder="you@gmail.com"></div>
-        <div class="f"><span>App Password</span><input type="password" id="set-spw" placeholder="••••••••••••"></div>
-      </div>
+      <div class="scard-t">◎ Resend Email <span class="ss-badge off" id="ss-sm">Not Set</span></div>
+      <div class="f"><span>API Key</span><input type="password" id="set-rk" placeholder="re_xxxxxxxxxxxxxxxx"></div>
+      <div class="f"><span>From Email</span><input type="email" id="set-rf" placeholder="leif@yourdomain.com"></div>
       <div class="ibox">
-        <strong>Gmail:</strong> Use an App Password, not your regular password.<br>
-        Google Account → Security → 2-Step Verification → App Passwords<br>
-        Easier: <a href="https://resend.com" target="_blank">Resend.com</a> — free 100 emails/day
+        1. Sign up free at <a href="https://resend.com" target="_blank">resend.com</a> (3,000 emails/month free)<br>
+        2. Go to API Keys → Create API Key → copy it above<br>
+        3. Go to Domains → Add your domain, or Emails → verify a single sender email<br>
+        4. Use that verified email as the From Email above
       </div>
       <button class="sbtn" onclick="saveSet('smtp')">Save Settings</button>
     </div>
@@ -920,10 +917,9 @@ async function checkCfg(){
     setSavedPlaceholder('set-hunter', s.hasHunter, saved);
     setSavedPlaceholder('set-cf-id', s.hasCloudflare, saved);
     setSavedPlaceholder('set-cf-token', s.hasCloudflare, saved);
-    if(s.smtpUser){document.getElementById('set-su').value=s.smtpUser;}
+    if(s.resendFrom){document.getElementById('set-rf').value=s.resendFrom;}
     if(s.hasSmtp){
-      setSavedPlaceholder('set-sh', true, saved);
-      setSavedPlaceholder('set-spw', true, saved);
+      setSavedPlaceholder('set-rk', true, saved);
     }
   }catch{}
 }
@@ -1233,7 +1229,7 @@ async function saveSet(s){
   if(s==='anthropic'){b.anthropicKey=document.getElementById('set-ant').value.trim();if(!b.anthropicKey){alert('Enter key');return;}}
   if(s==='hunter'){b.hunterKey=document.getElementById('set-hunter').value.trim();if(!b.hunterKey){alert('Enter key');return;}}
   if(s==='cloudflare'){b.cloudflareAccountId=document.getElementById('set-cf-id').value.trim();b.cloudflareApiToken=document.getElementById('set-cf-token').value.trim();if(!b.cloudflareAccountId||!b.cloudflareApiToken){alert('Enter both Account ID and API Token');return;}}
-  if(s==='smtp'){b.smtpHost=document.getElementById('set-sh').value.trim();b.smtpPort=document.getElementById('set-sp').value.trim();b.smtpUser=document.getElementById('set-su').value.trim();b.smtpPass=document.getElementById('set-spw').value.trim();if(!b.smtpHost||!b.smtpUser||!b.smtpPass){alert('Fill all fields');return;}}
+  if(s==='smtp'){b.resendApiKey=document.getElementById('set-rk').value.trim();b.resendFrom=document.getElementById('set-rf').value.trim();if(!b.resendApiKey||!b.resendFrom){alert('Fill all fields');return;}}
   await post('/api/settings',b);await checkCfg();alert('Saved ✓');
 }
 

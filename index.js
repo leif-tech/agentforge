@@ -284,14 +284,14 @@ app.get('/api/leads/export/csv', (req,res) => {
 app.get('/api/settings', (req,res) => res.json({
   hasAnthropicKey: !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'),
   hasGoogleKey: !!process.env.GOOGLE_PLACES_API_KEY,
-  hasSmtp: !!(process.env.SMTP_HOST && process.env.SMTP_USER),
+  hasSmtp: !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM),
   hasHunter: !!process.env.HUNTER_API_KEY,
   hasCloudflare: !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN),
-  smtpUser: process.env.SMTP_USER||'',
+  resendFrom: process.env.RESEND_FROM||'',
 }));
 
 app.post('/api/settings', (req,res) => {
-  const { anthropicKey, smtpHost, smtpPort, smtpUser, smtpPass, hunterKey, cloudflareAccountId, cloudflareApiToken } = req.body;
+  const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken } = req.body;
   const ep = fs.existsSync(path.join(__dirname,'leads')) ? path.join(__dirname,'leads','.env') : path.join(__dirname,'.env');
   let env = fs.existsSync(ep)?fs.readFileSync(ep,'utf8'):'';
   const set = (k,v) => {
@@ -300,8 +300,8 @@ app.post('/api/settings', (req,res) => {
     process.env[k]=v;
   };
   set('ANTHROPIC_API_KEY',anthropicKey);
-  set('SMTP_HOST',smtpHost); set('SMTP_PORT',smtpPort);
-  set('SMTP_USER',smtpUser); set('SMTP_PASS',smtpPass);
+  set('RESEND_API_KEY',resendApiKey);
+  set('RESEND_FROM',resendFrom);
   set('HUNTER_API_KEY',hunterKey);
   set('CLOUDFLARE_ACCOUNT_ID',cloudflareAccountId);
   set('CLOUDFLARE_API_TOKEN',cloudflareApiToken);

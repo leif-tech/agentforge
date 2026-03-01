@@ -131,20 +131,12 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     ? { subject: subjectOverride, body: bodyOverride }
     : await generateEmailCopy(lead, previewUrl);
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) throw new Error('SMTP not configured. Go to Settings.');
+  const { RESEND_API_KEY, RESEND_FROM } = process.env;
+  if (!RESEND_API_KEY) throw new Error('Resend API key not configured. Go to Settings.');
+  if (!RESEND_FROM) throw new Error('Resend From email not configured. Go to Settings.');
 
-  const nodemailer = require('nodemailer');
-  const port = parseInt(SMTP_PORT) || 587;
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST, port,
-    secure: port === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 60000
-  });
+  const { Resend } = require('resend');
+  const resend = new Resend(RESEND_API_KEY);
 
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
@@ -181,8 +173,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     `<p style="margin:0 0 16px;font-size:14.5px;line-height:1.8;color:#2d2d2d">${l}</p>`
   ).join('');
 
-  await transporter.sendMail({
-    from: `"Leif | WebForge" <${SMTP_USER}>`,
+  await resend.emails.send({
+    from: `Leif | WebForge <${RESEND_FROM}>`,
     to: emailAddress,
     subject: copy.subject,
     text: copy.body,
