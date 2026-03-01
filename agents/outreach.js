@@ -135,10 +135,15 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) throw new Error('SMTP not configured. Go to Settings.');
 
   const nodemailer = require('nodemailer');
+  const port = parseInt(SMTP_PORT) || 587;
   const transporter = nodemailer.createTransport({
-    host: SMTP_HOST, port: parseInt(SMTP_PORT) || 587,
-    secure: false, auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: false }
+    host: SMTP_HOST, port,
+    secure: port === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 60000
   });
 
   await transporter.verify();
