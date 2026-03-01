@@ -37,40 +37,52 @@ async function buildDemoSite(lead, onProgress) {
   onProgress({ status:'building', message:`✍️  Writing prompt for ${lead.name}...` });
   const type = (lead.type||'business').replace(/_/g,' ');
 
-  const prompt = `You are a world-class web designer. Build a complete, impressive demo website to SELL to a local business owner who currently has no website.
+  const imgSeed = lead.name.replace(/[^a-z0-9]/gi,'-').toLowerCase().substring(0,20);
+  const prompt = `You are a world-class web designer. Build a complete, stunning demo website for a local business owner.
 
 Business: "${lead.name}"
 Type: ${type}
 Address: ${lead.address}
-Phone: ${lead.phone !== 'N/A' ? lead.phone : 'contact us'}
+Phone: ${lead.phone !== 'N/A' ? lead.phone : 'Call us'}
 Google Rating: ${lead.rating !== 'N/A' ? lead.rating+'/5 ('+lead.reviews+' reviews)' : 'not yet rated'}
 
-REQUIREMENTS:
-1. Single HTML file — all CSS in <style>, all JS in <script>
-2. Two Google Fonts via CDN that match the business vibe
-3. Sticky navigation bar with smooth scroll links
-4. Hero section: big headline + subtext + CTA button
-5. About section: 2-3 paragraphs of compelling real copy (no Lorem ipsum)
-6. Services/Menu: 6 real items with realistic prices
-7. Testimonials: 3 convincing fake reviews with names and star ratings
-8. Contact section: phone, address, and a Google Maps link
-9. Footer: business name, © 2025
-10. Floating "Book Now" button (bottom-right, always visible)
-11. Fade-in animations via IntersectionObserver
-12. Mobile responsive with CSS Grid/Flexbox
-13. SEO meta tags: title, description, og:title, og:description
-14. Professional color palette that fits the business type
-15. Must look like a $2,000+ agency website
+IMAGES — use these exact Picsum URLs (they always work, no broken images):
+- Hero background: https://picsum.photos/seed/${imgSeed}/1600/900
+- About section photo: https://picsum.photos/seed/${imgSeed}2/800/600
+- Gallery/feature image 1: https://picsum.photos/seed/${imgSeed}3/600/400
+- Gallery/feature image 2: https://picsum.photos/seed/${imgSeed}4/600/400
+- Gallery/feature image 3: https://picsum.photos/seed/${imgSeed}5/600/400
 
-CRITICAL: Output ONLY raw HTML. Start with <!DOCTYPE html>. End with </html>. Zero markdown. Zero explanation.`;
+SECTIONS (build all of these in order):
+1. <head> — Google Fonts CDN (2 fonts matching the business), SEO meta tags, all CSS in <style>
+2. Sticky nav — logo left, links right (Home, About, Services, Gallery, Reviews, Contact)
+3. Hero — full-screen background image with a DARK SEMI-TRANSPARENT OVERLAY (rgba 0,0,0,0.5) so white text is always visible. Large headline, subheadline, two CTA buttons.
+4. About — split layout: left side has the about image, right side has 3 paragraphs of real compelling copy about this specific business
+5. Services — 6 cards in a grid, each with an icon (use emoji), service name, short description, realistic price
+6. Gallery — 3 images in a horizontal row with rounded corners and hover zoom effect
+7. Testimonials — 3 review cards with star ratings (★★★★★), customer name, and 2-3 sentences of genuine-sounding review text
+8. Contact — address, phone, hours, and a "Get Directions" button linking to Google Maps
+9. Footer — business name, tagline, © 2025, social media icon links
+10. Floating "Book Now" / "Call Now" button fixed bottom-right, always visible
+
+CSS RULES:
+- Never use white text on white or light backgrounds — always ensure contrast
+- Hero text must be white (there is a dark overlay on the image)
+- Use CSS custom properties (--primary, --accent, --dark, --light) for the color palette
+- Smooth scroll behavior on <html>
+- Fade-in animation on sections using IntersectionObserver
+- Fully mobile responsive using CSS Grid and Flexbox
+- Cards have subtle box-shadow and hover lift effect
+
+CRITICAL: Output ONLY the raw HTML. Start with <!DOCTYPE html>. End with </html>. No markdown, no explanation, no code fences.`;
 
   let html = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       onProgress({ status:'building', message:`🤖 Calling Claude Haiku (attempt ${attempt}/2)... this takes 20-40 seconds` });
       const msg = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 8000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 12000,
         messages: [{ role:'user', content: prompt }]
       });
       onProgress({ status:'building', message:`📥 Response received — validating HTML...` });
