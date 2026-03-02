@@ -6,6 +6,7 @@ const localEnv = path.join(__dirname, '.env');
 require('dotenv').config({ path: fs.existsSync(leadsEnv) ? leadsEnv : localEnv });
 const express = require('express');
 const cors = require('cors');
+const session = require('express-session');
 
 const { runScout }              = require('./agents/scout');
 const { buildDemoSite }         = require('./agents/builder');
@@ -20,6 +21,83 @@ const getBase = () => process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'agentforge-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
+}));
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
+const LOGIN_USER = process.env.LOGIN_USER || 'leif';
+const LOGIN_PASS = process.env.LOGIN_PASS || 'webforge2026';
+
+app.get('/login', (req, res) => {
+  if (req.session.auth) return res.redirect('/');
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgentForge — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#060810;color:#f0f4ff;font-family:'Syne',sans-serif;height:100vh;display:flex;align-items:center;justify-content:center}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.card{background:#0b0f1a;border:1px solid #1e2a45;border-radius:16px;padding:48px 40px;width:100%;max-width:400px;position:relative}
+.logo{font-size:22px;font-weight:800;letter-spacing:.03em;margin-bottom:32px;text-align:center}
+.logo span{color:#00e5ff}
+label{display:block;font-size:11px;color:#4a5d80;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+input{width:100%;background:#060810;border:1px solid #1e2a45;border-radius:8px;padding:12px 14px;color:#f0f4ff;font-size:14px;outline:none;margin-bottom:20px;font-family:inherit}
+input:focus{border-color:#00e5ff}
+button{width:100%;background:#00e5ff;color:#060810;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.04em}
+button:hover{background:#00b8cc}
+.err{color:#ff4d6d;font-size:13px;margin-bottom:16px;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">AGENT<span>FORGE</span></div>
+  ${req.query.err ? '<div class="err">Invalid username or password.</div>' : ''}
+  <form method="POST" action="/login">
+    <label>Username</label>
+    <input type="text" name="username" autofocus autocomplete="username">
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="current-password">
+    <button type="submit">Sign In →</button>
+  </form>
+</div>
+</body>
+</html>`);
+});
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === LOGIN_USER && password === LOGIN_PASS) {
+    req.session.auth = true;
+    return res.redirect('/');
+  }
+  res.redirect('/login?err=1');
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/login');
+});
+
+function requireAuth(req, res, next) {
+  if (req.session.auth) return next();
+  res.redirect('/login');
+}
+
+// Protect all routes except /login and /logout
+app.use((req, res, next) => {
+  if (req.path === '/login' || req.path === '/logout') return next();
+  if (req.session.auth) return next();
+  res.redirect('/login');
+});
 app.use(express.static(path.join(__dirname,'public'), {
   setHeaders: (res, p) => {
     if (p.endsWith('.html')) {
