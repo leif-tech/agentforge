@@ -351,6 +351,14 @@ app.delete('/api/leads/:i', (req,res) => {
   res.json({ok:true});
 });
 app.delete('/api/leads', (req,res) => { leads=[];save(LF,leads);res.json({ok:true}); });
+app.post('/api/leads/delete-batch', (req,res) => {
+  const { indices } = req.body;
+  if (!Array.isArray(indices) || !indices.length) return res.status(400).json({ error:'No indices' });
+  const sorted = [...new Set(indices)].map(Number).filter(i=>i>=0&&i<leads.length).sort((a,b)=>b-a);
+  sorted.forEach(i => leads.splice(i,1));
+  save(LF,leads);
+  res.json({ ok:true, removed:sorted.length, remaining:leads.length });
+});
 app.get('/api/leads/export/csv', (req,res) => {
   const h=['name','address','phone','rating','reviews','type','location','status','foundEmail','emailConfidence','previewUrl','outreachEmail','found_at'];
   const rows=leads.map(l=>h.map(k=>`"${(l[k]||'').toString().replace(/"/g,'""')}"`).join(','));
@@ -404,8 +412,12 @@ app.listen(PORT, () => {
   console.log(`  Google Places : ${process.env.GOOGLE_PLACES_API_KEY?'✓ Ready':'✗ Missing'}`);
   console.log(`  Anthropic     : ${process.env.ANTHROPIC_API_KEY&&process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'?'✓ Ready':'✗ Add in Settings'}`);
   console.log(`  Hunter.io     : ${process.env.HUNTER_API_KEY?'✓ Ready':'✗ Add in Settings'}`);
-  console.log(`  SMTP Email    : ${process.env.SMTP_HOST?'✓ Ready':'✗ Add in Settings'}`);
+  console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+')':'✗ Add in Settings — outreach emails will NOT send'}`);
   console.log(`  Cloudflare    : ${process.env.CLOUDFLARE_ACCOUNT_ID&&process.env.CLOUDFLARE_API_TOKEN?'✓ Ready — sites deploy to pages.dev':'✗ Add in Settings (required for permanent URLs)'}\n`);
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
+    console.log(`  ⚠️  WARNING: Resend not configured — outreach emails will fail!`);
+    console.log(`     Set RESEND_API_KEY and RESEND_FROM in .env or via Settings.\n`);
+  }
 });
 
 // ── SOCIAL FINDER ─────────────────────────────────────────────────────────

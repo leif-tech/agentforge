@@ -283,6 +283,27 @@ tr:hover td{background:rgba(0,229,255,.03)}
 .ib{background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:4px;font-size:12px;color:var(--t4);transition:all .15s}
 .ib:hover{color:var(--red);background:rgba(255,77,109,.08)}
 
+/* ── CITY GROUP HEADERS ── */
+.city-hdr td{
+  background:rgba(0,229,255,.04);border-bottom:1px solid rgba(0,229,255,.12);
+  padding:7px 10px;cursor:pointer;user-select:none;
+}
+.city-hdr:hover td{background:rgba(0,229,255,.07)}
+.city-hdr .city-lbl{
+  font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:.03em;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.city-hdr .city-cnt{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.25);
+  border-radius:10px;padding:1px 7px;font-size:9px;font-weight:700;
+  color:var(--cyan);font-family:var(--mono);min-width:20px;
+}
+.city-hdr .city-arr{
+  display:inline-block;font-size:9px;color:var(--t3);transition:transform .15s;margin-left:4px;
+}
+.city-hdr .city-arr.collapsed{transform:rotate(-90deg)}
+
 /* ── EMPTY STATE ── */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px}
 .ei{font-size:48px;opacity:.12;filter:grayscale(1)}
@@ -387,6 +408,21 @@ tr:hover td{background:rgba(0,229,255,.03)}
   <button onclick="document.getElementById('api-warn').style.display='none'"
     style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);
     color:#fff;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px">Dismiss</button>
+</div>
+
+<!-- RESEND WARNING BANNER -->
+<div id="resend-warn" style="display:none;position:fixed;top:52px;left:0;right:0;z-index:99;
+  background:linear-gradient(90deg,rgba(255,179,0,.95),rgba(200,140,0,.95));
+  padding:10px 20px;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid rgba(255,179,0,.5);backdrop-filter:blur(8px)">
+  <span style="font-size:16px">📧</span>
+  <span style="font-size:12px;font-weight:700;color:#060810">
+    RESEND NOT CONFIGURED — Outreach emails will NOT send.
+    Go to <span style="text-decoration:underline;cursor:pointer" onclick="go('settings')">Settings</span> and add your Resend API key + From email.
+  </span>
+  <button onclick="document.getElementById('resend-warn').style.display='none'"
+    style="margin-left:auto;background:rgba(0,0,0,.15);border:1px solid rgba(0,0,0,.25);
+    color:#060810;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px">Dismiss</button>
 </div>
 
 <div class="nav">
@@ -533,11 +569,12 @@ tr:hover td{background:rgba(0,229,255,.03)}
   <div class="sb">
     <div class="ss">
       <div class="lbl">Demo Site Builder</div>
-      <p style="font-size:10.5px;color:var(--t2);line-height:1.7;margin-bottom:14px">Claude Haiku builds a stunning custom website per lead. ~$0.01/site — ultra cheap.</p>
+      <p style="font-size:10.5px;color:var(--t2);line-height:1.7;margin-bottom:14px">Claude Sonnet builds a stunning custom website per lead. Uses the latest Sonnet model for high-quality output.</p>
       <div style="font-size:10.5px;color:var(--cyan);font-weight:600;margin-bottom:8px" id="b-sel-txt">0 selected</div>
       <button class="btn btn-main" id="b-btn" onclick="buildSel()">▶ Build Selected</button>
       <button class="btn btn-sec" onclick="bSelAll()">Select All Without Site</button>
       <button class="btn btn-sec" onclick="bClear()">Clear Selection</button>
+      <button class="btn btn-red" onclick="delSel()">✕ Delete Selected</button>
     </div>
     <div class="sg">
       <div class="sc"><div class="sl">Total Leads</div><div class="sv" id="b-tot">0</div></div>
@@ -819,6 +856,7 @@ tr:hover td{background:rgba(0,229,255,.03)}
 // ── STATE ─────────────────────────────────────────────────────────────────
 let leads=[], lastReply=null, siteLead=null;
 let efSel=new Set(), bSel=new Set();
+let collapsedCities=new Set();
 let sid='af_'+Math.random().toString(36).substr(2,9);
 let sse=null;
 
@@ -834,33 +872,61 @@ const TYPES=[
 let selTypes=['restaurant'];
 
 
+// ── CITY GROUPING ────────────────────────────────────────────────────────
+function groupByLocation(arr){
+  const groups=new Map();
+  arr.forEach((l,i)=>{
+    const city=(l.location||'Unknown').trim();
+    if(!groups.has(city))groups.set(city,[]);
+    groups.get(city).push({lead:l,idx:i});
+  });
+  return groups;
+}
+function toggleCity(city){
+  collapsedCities.has(city)?collapsedCities.delete(city):collapsedCities.add(city);
+  drawScout();drawEF();drawB();drawSM();
+}
+function cityHeaderRow(city,count,cols){
+  const col=collapsedCities.has(city);
+  return `<tr class="city-hdr" onclick="toggleCity('${city.replace(/'/g,"\\'")}')">
+    <td colspan="${cols}"><span class="city-lbl">${x(city)} <span class="city-cnt">${count}</span><span class="city-arr${col?' collapsed':''}">▼</span></span></td>
+  </tr>`;
+}
+
 // ── SOCIAL FINDER ─────────────────────────────────────────────────────────
 let smSel = new Set();
 
 function drawSM() {
   const e = document.getElementById('sm-e'), t = document.getElementById('sm-tbl');
-  const withSite = leads.filter(l => l.siteFile);
   document.getElementById('sm-tot').textContent = leads.length;
   document.getElementById('sm-found').textContent = leads.filter(l => l.socials?.foundCount > 0).length;
   document.getElementById('sm-badge').textContent = leads.length + ' leads';
   if (!leads.length) { e.style.display='flex'; t.style.display='none'; return; }
   e.style.display='none'; t.style.display='table';
-  document.getElementById('sm-body').innerHTML = leads.map((l, i) => {
-    const s = l.socials || {};
-    const ig = s.instagram ? `<a href="${s.instagram.url}" target="_blank" class="badge b-em" style="text-decoration:none">IG ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
-    const fb = s.facebook ? `<a href="${s.facebook.url}" target="_blank" class="badge b-built" style="text-decoration:none">FB ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
-    const tt = s.tiktok ? `<a href="${s.tiktok.url}" target="_blank" class="badge b-vio" style="text-decoration:none">TT ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
-    const canSearch = !!l.siteFile;
-    return `<tr>
-      <td><input type="checkbox" ${smSel.has(i)?'checked':''} ${!canSearch?'disabled':''} onchange="smTog(${i},this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
-      <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
-      <td>${ig}</td>
-      <td>${fb}</td>
-      <td>${tt}</td>
-      <td>${l.socials ? `<span class="badge b-rep">${l.socials.foundCount} found</span>` : l.siteFile ? '<span class="badge b-new">Ready</span>' : '<span class="badge b-type">Build site first</span>'}</td>
-      <td>${canSearch ? `<button class="ab" onclick="smOne(${i})">Search</button>` : ''}</td>
-    </tr>`;
-  }).join('');
+  const groups=groupByLocation(leads);
+  const multi=groups.size>1;
+  let html='';
+  for(const [city,items] of groups){
+    if(multi) html+=cityHeaderRow(city,items.length,7);
+    if(multi&&collapsedCities.has(city)) continue;
+    html+=items.map(({lead:l,idx:i})=>{
+      const s = l.socials || {};
+      const ig = s.instagram ? `<a href="${s.instagram.url}" target="_blank" class="badge b-em" style="text-decoration:none">IG ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
+      const fb = s.facebook ? `<a href="${s.facebook.url}" target="_blank" class="badge b-built" style="text-decoration:none">FB ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
+      const tt = s.tiktok ? `<a href="${s.tiktok.url}" target="_blank" class="badge b-vio" style="text-decoration:none">TT ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
+      const canSearch = !!l.siteFile;
+      return `<tr>
+        <td><input type="checkbox" ${smSel.has(i)?'checked':''} ${!canSearch?'disabled':''} onchange="smTog(${i},this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
+        <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
+        <td>${ig}</td>
+        <td>${fb}</td>
+        <td>${tt}</td>
+        <td>${l.socials ? `<span class="badge b-rep">${l.socials.foundCount} found</span>` : l.siteFile ? '<span class="badge b-new">Ready</span>' : '<span class="badge b-type">Build site first</span>'}</td>
+        <td>${canSearch ? `<button class="ab" onclick="smOne(${i})">Search</button>` : ''}</td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('sm-body').innerHTML=html;
   document.getElementById('sm-sel-txt').textContent = smSel.size + ' selected';
 }
 
@@ -906,6 +972,8 @@ async function checkCfg(){
     const am=document.getElementById('ant-missing-warn');
     if(ac){ac.style.borderColor=s.hasAnthropicKey?'':'rgba(255,77,109,.4)';}
     if(am){am.style.display=s.hasAnthropicKey?'none':'block';}
+    const rw=document.getElementById('resend-warn');
+    if(rw){rw.style.display=s.hasSmtp?'none':'flex';}
     setChip('cp-hunter',s.hasHunter,'Hunter');
     setChip('cp-smtp',s.hasSmtp,'Email');
     setChip('cp-cf',s.hasCloudflare,'Cloudflare');
@@ -933,8 +1001,8 @@ function go(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('pg-'+name).classList.add('on');
-  const icons={scout:'⬡ Scout',finder:'◈ Email',builder:'◉ Builder',outreach:'◎ Outreach',closer:'⬢ Closer',analytics:'▤ Analytics',settings:'⚙ Settings'};
-  document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.trim().startsWith((icons[name]||'__').split(' ')[1]||'__')||t.textContent.includes((icons[name]||'').split(' ')[1]))t.classList.add('on');});
+  const icons={scout:'⬡ Scout',finder:'◈ Email Finder',builder:'◉ Builder',social:'⬡ Social',outreach:'◎ Outreach',closer:'⬢ Closer',analytics:'▤ Analytics',settings:'⚙ Settings'};
+  document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.trim()===icons[name])t.classList.add('on');});
   if(name==='builder')drawB();
   if(name==='social')drawSM();
   if(name==='finder')drawEF();
@@ -1007,7 +1075,13 @@ function drawScout(){
   document.getElementById('s-badge').textContent=leads.length+' found';
   if(!leads.length){e.style.display='flex';t.style.display='none';return;}
   e.style.display='none';t.style.display='table';
-  document.getElementById('scout-body').innerHTML=leads.map((l,i)=>`<tr>
+  const groups=groupByLocation(leads);
+  const multi=groups.size>1;
+  let html='';
+  for(const [city,items] of groups){
+    if(multi) html+=cityHeaderRow(city,items.length,8);
+    if(multi&&collapsedCities.has(city)) continue;
+    html+=items.map(({lead:l,idx:i})=>`<tr>
     <td style="color:var(--t4);font-family:var(--mono);font-size:9.5px">${i+1}</td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td class="ph ${!l.phone||l.phone==='N/A'?'na':''}">${x(l.phone||'N/A')}</td>
@@ -1022,6 +1096,8 @@ function drawScout(){
       <button class="ib" onclick="delLead(${i})" title="Remove">✕</button>
     </td>
   </tr>`).join('');
+  }
+  document.getElementById('scout-body').innerHTML=html;
 }
 
 function updStats(){
@@ -1037,7 +1113,18 @@ function updStats(){
   document.getElementById('b-badge').textContent=t+' leads';
 }
 
-async function delLead(i){leads.splice(i,1);await fetch(`/api/leads/${i}`,{method:'DELETE'});drawScout();updStats();}
+async function delLead(i){leads.splice(i,1);await fetch(`/api/leads/${i}`,{method:'DELETE'});efSel.clear();bSel.clear();smSel.clear();drawScout();updStats();}
+async function delSel(){
+  if(!bSel.size){log('b-feed','Select leads to delete first','er');return;}
+  if(!confirm(`Delete ${bSel.size} selected lead(s)? This cannot be undone.`))return;
+  const indices=[...bSel];
+  await post('/api/leads/delete-batch',{indices});
+  const sorted=[...new Set(indices)].sort((a,b)=>b-a);
+  sorted.forEach(i=>leads.splice(i,1));
+  bSel.clear();efSel.clear();smSel.clear();
+  drawScout();drawB();drawEF();drawSM();updStats();
+  log('b-feed',`✓ Deleted ${sorted.length} lead(s)`,'gr');
+}
 async function exportCSV(){window.open('/api/leads/export/csv','_blank');}
 async function clearLeads(){if(!confirm('Clear all leads?'))return;leads=[];await fetch('/api/leads',{method:'DELETE'});drawScout();updStats();}
 async function loadLeads(){try{const d=await(await fetch('/api/leads')).json();leads=d.leads||[];drawScout();updStats();}catch{}}
@@ -1047,7 +1134,13 @@ function drawEF(){
   const e=document.getElementById('ef-e'),t=document.getElementById('ef-tbl');
   if(!leads.length){e.style.display='flex';t.style.display='none';return;}
   e.style.display='none';t.style.display='table';
-  document.getElementById('ef-body').innerHTML=leads.map((l,i)=>`<tr>
+  const groups=groupByLocation(leads);
+  const multi=groups.size>1;
+  let html='';
+  for(const [city,items] of groups){
+    if(multi) html+=cityHeaderRow(city,items.length,6);
+    if(multi&&collapsedCities.has(city)) continue;
+    html+=items.map(({lead:l,idx:i})=>`<tr>
     <td><input type="checkbox" ${efSel.has(i)?'checked':''} onchange="efTog(${i},this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
     <td><div class="ln">${x(l.name)}</div></td>
     <td><div class="la">${x(l.address)}</div></td>
@@ -1055,6 +1148,8 @@ function drawEF(){
     <td style="font-family:var(--mono);font-size:10px;color:var(--t3)">${l.emailConfidence?l.emailConfidence+'%':'—'}</td>
     <td><button class="ab" onclick="efOne(${i})">Search</button></td>
   </tr>`).join('');
+  }
+  document.getElementById('ef-body').innerHTML=html;
   document.getElementById('ef-sel-txt').textContent=efSel.size+' selected';
 }
 function efTog(i,c){c?efSel.add(i):efSel.delete(i);document.getElementById('ef-sel-txt').textContent=efSel.size+' selected';}
@@ -1076,7 +1171,13 @@ function drawB(){
   const e=document.getElementById('b-e'),t=document.getElementById('b-tbl');
   if(!leads.length){e.style.display='flex';t.style.display='none';return;}
   e.style.display='none';t.style.display='table';
-  document.getElementById('b-body').innerHTML=leads.map((l,i)=>`<tr>
+  const groups=groupByLocation(leads);
+  const multi=groups.size>1;
+  let html='';
+  for(const [city,items] of groups){
+    if(multi) html+=cityHeaderRow(city,items.length,6);
+    if(multi&&collapsedCities.has(city)) continue;
+    html+=items.map(({lead:l,idx:i})=>`<tr>
     <td><input type="checkbox" ${bSel.has(i)?'checked':''} onchange="bTog(${i},this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td><span class="badge b-type">${x(l.type||'').replace(/_/g,' ')}</span></td>
@@ -1084,6 +1185,8 @@ function drawB(){
     <td>${l.previewUrl?`<button class="ab" onclick="prevSite(${i})">Preview ↗</button>`:'<span style="color:var(--t4);font-size:10px">—</span>'}</td>
     <td><button class="ab" onclick="buildOne(${i})">Build</button></td>
   </tr>`).join('');
+  }
+  document.getElementById('b-body').innerHTML=html;
   document.getElementById('b-sel-txt').textContent=bSel.size+' selected';
 }
 function bTog(i,c){c?bSel.add(i):bSel.delete(i);document.getElementById('b-sel-txt').textContent=bSel.size+' selected';}
@@ -1152,6 +1255,15 @@ async function sendOut(){
   const i=parseInt(document.getElementById('o-lead').value),em=document.getElementById('o-email').value.trim();
   if(isNaN(i)){alert('Select a lead');return;}
   if(!em){alert('Enter an email address');return;}
+  // Pre-check: is Resend configured?
+  try{
+    const cfg=await(await fetch('/api/settings')).json();
+    if(!cfg.hasSmtp){
+      alert('⚠ Resend is not configured!\n\nGo to Settings and add your Resend API Key + From Email before sending outreach.');
+      go('settings');
+      return;
+    }
+  }catch{}
   const subject=document.getElementById('o-subj')?.value?.trim();
   const body=document.getElementById('o-email-body')?.value?.trim();
   btn('o-send-btn','Sending...',true);
