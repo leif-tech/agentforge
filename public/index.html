@@ -486,6 +486,10 @@ tr:hover td{background:rgba(0,229,255,.03)}
     </div>
     <div class="ss">
       <button class="btn btn-main" id="scout-btn" onclick="runScout()">▶ Run Scout Agent</button>
+      <div style="font-size:10.5px;color:var(--cyan);font-weight:600;margin:10px 0 4px" id="s-sel-txt">0 selected</div>
+      <button class="btn btn-red" onclick="sDelSel()">✕ Delete Selected</button>
+      <button class="btn btn-sec" onclick="sSelAll()">Select All Without Email</button>
+      <button class="btn btn-sec" onclick="sClear()">Clear Selection</button>
       <button class="btn btn-sec" onclick="exportCSV()">↓ Export CSV</button>
       <button class="btn btn-red" onclick="clearLeads()">✕ Clear All Leads</button>
     </div>
@@ -508,7 +512,7 @@ tr:hover td{background:rgba(0,229,255,.03)}
         <div class="es">Set location, pick business types, then launch the Scout</div>
       </div>
       <table id="scout-tbl" style="display:none">
-        <thead><tr><th>#</th><th>Business</th><th>Phone</th><th>Rating</th><th>Email</th><th>Type</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="s-all" onchange="sTogAll(this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></th><th>#</th><th>Business</th><th>Phone</th><th>Rating</th><th>Email</th><th>Type</th><th>Status</th><th></th></tr></thead>
         <tbody id="scout-body"></tbody>
       </table>
     </div>
@@ -855,7 +859,7 @@ tr:hover td{background:rgba(0,229,255,.03)}
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────
 let leads=[], lastReply=null, siteLead=null;
-let efSel=new Set(), bSel=new Set();
+let sSel=new Set(), efSel=new Set(), bSel=new Set();
 let collapsedCities=new Set();
 let sid='af_'+Math.random().toString(36).substr(2,9);
 let sse=null;
@@ -1079,9 +1083,10 @@ function drawScout(){
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,8);
+    if(multi) html+=cityHeaderRow(city,items.length,9);
     if(multi&&collapsedCities.has(city)) continue;
     html+=items.map(({lead:l,idx:i})=>`<tr>
+    <td><input type="checkbox" ${sSel.has(i)?'checked':''} onchange="sTog(${i},this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
     <td style="color:var(--t4);font-family:var(--mono);font-size:9.5px">${i+1}</td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td class="ph ${!l.phone||l.phone==='N/A'?'na':''}">${x(l.phone||'N/A')}</td>
@@ -1098,6 +1103,23 @@ function drawScout(){
   </tr>`).join('');
   }
   document.getElementById('scout-body').innerHTML=html;
+  document.getElementById('s-sel-txt').textContent=sSel.size+' selected';
+}
+
+function sTog(i,c){c?sSel.add(i):sSel.delete(i);document.getElementById('s-sel-txt').textContent=sSel.size+' selected';}
+function sTogAll(c){sSel.clear();if(c)leads.forEach((_,i)=>sSel.add(i));drawScout();}
+function sSelAll(){sSel.clear();leads.forEach((l,i)=>{if(!l.foundEmail)sSel.add(i);});drawScout();}
+function sClear(){sSel.clear();drawScout();}
+async function sDelSel(){
+  if(!sSel.size){log('s-feed','Select leads to delete first','er');return;}
+  if(!confirm(`Delete ${sSel.size} selected lead(s)? This cannot be undone.`))return;
+  const indices=[...sSel];
+  await post('/api/leads/delete-batch',{indices});
+  const sorted=[...new Set(indices)].sort((a,b)=>b-a);
+  sorted.forEach(i=>leads.splice(i,1));
+  sSel.clear();efSel.clear();bSel.clear();smSel.clear();
+  drawScout();drawB();drawEF();drawSM();updStats();
+  log('s-feed',`✓ Deleted ${sorted.length} lead(s)`,'gr');
 }
 
 function updStats(){
@@ -1113,7 +1135,7 @@ function updStats(){
   document.getElementById('b-badge').textContent=t+' leads';
 }
 
-async function delLead(i){leads.splice(i,1);await fetch(`/api/leads/${i}`,{method:'DELETE'});efSel.clear();bSel.clear();smSel.clear();drawScout();updStats();}
+async function delLead(i){leads.splice(i,1);await fetch(`/api/leads/${i}`,{method:'DELETE'});sSel.clear();efSel.clear();bSel.clear();smSel.clear();drawScout();updStats();}
 async function delSel(){
   if(!bSel.size){log('b-feed','Select leads to delete first','er');return;}
   if(!confirm(`Delete ${bSel.size} selected lead(s)? This cannot be undone.`))return;
@@ -1121,12 +1143,12 @@ async function delSel(){
   await post('/api/leads/delete-batch',{indices});
   const sorted=[...new Set(indices)].sort((a,b)=>b-a);
   sorted.forEach(i=>leads.splice(i,1));
-  bSel.clear();efSel.clear();smSel.clear();
+  sSel.clear();bSel.clear();efSel.clear();smSel.clear();
   drawScout();drawB();drawEF();drawSM();updStats();
   log('b-feed',`✓ Deleted ${sorted.length} lead(s)`,'gr');
 }
 async function exportCSV(){window.open('/api/leads/export/csv','_blank');}
-async function clearLeads(){if(!confirm('Clear all leads?'))return;leads=[];await fetch('/api/leads',{method:'DELETE'});drawScout();updStats();}
+async function clearLeads(){if(!confirm('Clear all leads?'))return;leads=[];sSel.clear();efSel.clear();bSel.clear();smSel.clear();await fetch('/api/leads',{method:'DELETE'});drawScout();updStats();}
 async function loadLeads(){try{const d=await(await fetch('/api/leads')).json();leads=d.leads||[];drawScout();updStats();}catch{}}
 
 // ── EMAIL FINDER ──────────────────────────────────────────────────────────
