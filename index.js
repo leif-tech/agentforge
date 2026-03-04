@@ -383,6 +383,7 @@ app.post('/api/settings', (req,res) => {
   let env = fs.existsSync(ep)?fs.readFileSync(ep,'utf8'):'';
   const set = (k,v) => {
     if (!v) return;
+    v = v.toString().replace(/[\r\n]/g,'').trim();
     env = env.match(new RegExp(`^${k}=`,'m')) ? env.replace(new RegExp(`^${k}=.*`,'m'),`${k}=${v}`) : env+`\n${k}=${v}`;
     process.env[k]=v;
   };
