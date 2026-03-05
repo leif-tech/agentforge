@@ -158,29 +158,90 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   let samplesHtml = '';
   if (samples) {
     samplesHtml = `
-      <hr style="border:none;border-top:1px solid #e8e8e8;margin:28px 0">
-      <p style="font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 4px">Your 5 Free Deliverables</p>
-      <p style="font-size:11.5px;color:#999;margin:0 0 22px">Ready to use - no editing needed.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
+        <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
+        <tr><td style="padding:28px 0 6px" colspan="2">
+          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your 5 Free Deliverables</p>
+          <p style="font-size:12px;color:#888;margin:4px 0 0">Ready to use, no editing needed.</p>
+        </td></tr>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">01 - Custom Demo Website</p>
-      <a href="${linkUrl}" style="font-size:12.5px;color:#4f46e5;word-break:break-all;display:block;margin-bottom:20px">${previewUrl}</a>
+        <tr><td style="padding:20px 0 0" colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
+            <tr>
+              <td style="padding:16px 20px 14px">
+                <table cellpadding="0" cellspacing="0" border="0"><tr>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">1</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Custom Demo Website</td>
+                </tr></table>
+              </td>
+            </tr>
+            <tr><td style="padding:0 20px 16px">
+              <a href="${linkUrl}" style="font-size:13px;color:#4f46e5;text-decoration:none;word-break:break-all">${previewUrl}</a>
+            </td></tr>
+          </table>
+        </td></tr>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">02 - Instagram Caption</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.instagram_post || ''}</div>
+        <tr><td style="padding:12px 0 0" colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
+            <tr>
+              <td style="padding:16px 20px 14px">
+                <table cellpadding="0" cellspacing="0" border="0"><tr>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">2</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Instagram Caption</td>
+                </tr></table>
+              </td>
+            </tr>
+            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">${samples.instagram_post || ''}</td></tr>
+          </table>
+        </td></tr>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">03 - Google Review Response</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.review_response || ''}</div>
+        <tr><td style="padding:12px 0 0" colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
+            <tr>
+              <td style="padding:16px 20px 14px">
+                <table cellpadding="0" cellspacing="0" border="0"><tr>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">3</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Google Review Response</td>
+                </tr></table>
+              </td>
+            </tr>
+            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">${samples.review_response || ''}</td></tr>
+          </table>
+        </td></tr>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">04 - Customer Follow-Up Message</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.followup_message || ''}</div>
+        <tr><td style="padding:12px 0 0" colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
+            <tr>
+              <td style="padding:16px 20px 14px">
+                <table cellpadding="0" cellspacing="0" border="0"><tr>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">4</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up Message</td>
+                </tr></table>
+              </td>
+            </tr>
+            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">${samples.followup_message || ''}</td></tr>
+          </table>
+        </td></tr>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">05 - Online Presence Audit</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75">
-        <strong>Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
-        <strong>Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
-        <strong>Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
-        <strong>Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.
-      </div>
+        <tr><td style="padding:12px 0 0" colspan="2">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
+            <tr>
+              <td style="padding:16px 20px 14px">
+                <table cellpadding="0" cellspacing="0" border="0"><tr>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">5</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Online Presence Audit</td>
+                </tr></table>
+              </td>
+            </tr>
+            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">
+              <strong style="color:#111">Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
+              <strong style="color:#111">Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
+              <strong style="color:#111">Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
+              <strong style="color:#111">Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
     `;
   }
 
@@ -192,7 +253,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       const escaped = previewUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
     }
-    return `<p style="margin:0 0 16px;font-size:14.5px;line-height:1.8;color:#2d2d2d">${line}</p>`;
+    return `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#222">${line}</p>`;
   }).join('');
 
   // Tracking pixel HTML
@@ -204,20 +265,29 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     subject: copy.subject,
     text: copy.body,
     html: `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;max-width:600px;margin:0 auto">
-      <div style="background:#0a0a14;padding:18px 28px;border-radius:8px 8px 0 0;display:flex;align-items:center">
-        <span style="font-size:17px;font-weight:800;color:#fff;letter-spacing:.03em">WEB<span style="color:#00e5ff">FORGE</span></span>
-        <span style="margin-left:10px;font-size:11px;color:#555;letter-spacing:.05em">DIGITAL GROWTH</span>
-      </div>
-      <div style="background:#fff;padding:36px 28px;border:1px solid #e8e8e8;border-top:none">
-        ${bodyHtml}
-        ${samplesHtml}
-      </div>
-      <div style="background:#f8f8f8;padding:14px 28px;border:1px solid #e8e8e8;border-top:none;border-radius:0 0 8px 8px">
-        <p style="font-size:11px;color:#bbb;margin:0">WebForge - Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
-      </div>
-      ${pixelHtml}
-    </div>`
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5">
+      <tr><td align="center" style="padding:32px 16px">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:600px">
+          <!-- HEADER -->
+          <tr><td style="background:#0a0a14;padding:20px 32px;border-radius:10px 10px 0 0">
+            <table cellpadding="0" cellspacing="0" border="0"><tr>
+              <td style="font-size:18px;font-weight:800;color:#ffffff;letter-spacing:.02em;line-height:1;vertical-align:middle">WEB<span style="color:#00e5ff">FORGE</span></td>
+              <td style="padding-left:12px;font-size:11px;font-weight:600;color:#666;letter-spacing:.08em;vertical-align:middle;line-height:1">DIGITAL GROWTH</td>
+            </tr></table>
+          </td></tr>
+          <!-- BODY -->
+          <tr><td style="background:#ffffff;padding:40px 32px 36px;border-left:1px solid #e5e5e7;border-right:1px solid #e5e5e7">
+            ${bodyHtml}
+            ${samplesHtml}
+          </td></tr>
+          <!-- FOOTER -->
+          <tr><td style="background:#fafafa;padding:16px 32px;border:1px solid #e5e5e7;border-top:none;border-radius:0 0 10px 10px">
+            <p style="font-size:11px;color:#aaa;margin:0;line-height:1.5">WebForge &middot; Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
+          </td></tr>
+        </table>
+        ${pixelHtml}
+      </td></tr>
+    </table>`
   });
 
   onProgress({ status: 'sent', message: `Sent to ${emailAddress} with 5 free deliverables` });
