@@ -751,6 +751,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="lbl">Batch Actions</div>
       <button class="btn btn-main" id="o-batch-btn" onclick="batchOut()">📨 Send All (Batch)</button>
       <button class="btn btn-vio" id="o-ab-btn" onclick="abTest()" style="margin-top:6px">🧪 A/B Test Send</button>
+      <button class="btn btn-sec" id="o-fu-btn" onclick="batchFollowUp()" style="margin-top:6px">🔄 Follow-Up Selected</button>
       <div class="batch-prog" id="batch-prog" style="display:none">
         <div class="prog"><div class="pb" id="batch-pb"></div></div>
         <div class="batch-msg" id="batch-msg">Preparing...</div>
@@ -775,7 +776,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div class="tw">
       <div class="empty" id="o-e"><div class="ei">📨</div><div class="et">No Outreach Sent Yet</div><div class="es">Build demo sites, then send outreach</div></div>
       <table id="o-tbl" style="display:none">
-        <thead><tr><th>#</th><th>Business</th><th>Sent To</th><th>Preview</th><th>Sent At</th><th>Tracking</th><th>Sequence</th><th>Status</th></tr></thead>
+        <thead><tr><th><input type="checkbox" onchange="oTogAll(this.checked)"></th><th>#</th><th>Business</th><th>Sent To</th><th>Preview</th><th>Sent At</th><th>Tracking</th><th>Sequence</th><th>Status</th></tr></thead>
         <tbody id="o-tbl-body"></tbody>
       </table>
     </div>
@@ -1154,6 +1155,8 @@ function onSSE(d){
     if(d.progress!=null){bar('batch-pb',d.progress);document.getElementById('batch-msg').textContent=d.message;}
   }
   if(d.type==='outreach_batch_done'){btn('o-batch-btn','📨 Send All (Batch)',false);document.getElementById('batch-prog').style.display='none';bar('batch-pb',0);drawOut();loadLeads();}
+  if(d.type==='followup_batch'){log('o-feed',d.message,d.status==='sent'?'gr':d.status==='error'?'er':'');if(d.progress!==undefined)bar('batch-pb',d.progress);}
+  if(d.type==='followup_batch_done'){btn('o-fu-btn','🔄 Follow-Up Selected',false);document.getElementById('batch-prog').style.display='none';bar('batch-pb',0);oSel.clear();drawOut();loadLeads();}
   if(d.type==='ab_test'){
     log('o-feed',d.message,d.status==='sent'?'gr':d.status==='error'?'er':'hi');
     if(d.progress!=null){bar('batch-pb',d.progress);document.getElementById('batch-msg').textContent=d.message;}
@@ -1469,6 +1472,7 @@ function drawOut(){
     const tr=getLeadTracking(l.id);
     const trackHtml=(tr.opens||tr.clicks)?`${tr.opens?`<span class="ti ti-open">👁 ${tr.opens}</span> `:''}${tr.clicks?`<span class="ti ti-click">🔗 ${tr.clicks}</span>`:''}`:'<span style="color:var(--t4);font-size:9px">—</span>';
     return `<tr>
+    <td><input type="checkbox" class="o-cb" value="${l.id}" onchange="oSelUpd()"></td>
     <td style="color:var(--t4);font-family:var(--mono);font-size:9.5px">${i+1}</td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td style="font-family:var(--mono);font-size:10.5px;color:var(--t2)">${x(l.outreachEmail||'')}</td>
@@ -1478,6 +1482,19 @@ function drawOut(){
     <td><button class="ab" onclick="startSequence('${l.id}')" style="font-size:9px">+Seq</button></td>
     <td>${sb(l.status||'Sent')}</td>
   </tr>`;}).join('');
+}
+
+// ── OUTREACH SELECTION & BATCH FOLLOW-UP ──────────────────────────────────
+let oSel=new Set();
+function oTogAll(checked){document.querySelectorAll('.o-cb').forEach(c=>{c.checked=checked;if(checked)oSel.add(c.value);else oSel.delete(c.value);});oSelUpd();}
+function oSelUpd(){oSel=new Set([...document.querySelectorAll('.o-cb:checked')].map(c=>c.value));const b=document.getElementById('o-fu-btn');b.textContent=oSel.size?`🔄 Follow-Up Selected (${oSel.size})`:'🔄 Follow-Up Selected';}
+async function batchFollowUp(){
+  if(!oSel.size){alert('Select leads from the outreach log first');return;}
+  btn('o-fu-btn','Sending...',true);
+  document.getElementById('batch-prog').style.display='block';
+  document.getElementById('batch-msg').textContent='Starting follow-ups...';
+  bar('batch-pb',5);
+  await post('/api/outreach/followup-batch',{ids:[...oSel],sessionId:sid});
 }
 
 // ── CLOSER ────────────────────────────────────────────────────────────────

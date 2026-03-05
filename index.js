@@ -420,6 +420,46 @@ app.post('/api/outreach/batch', async (req,res) => {
   emit(sessionId, { type:'outreach_batch', status:'complete', message:`🏁 Batch done — ${sent} sent, ${failed} failed` });
 });
 
+// ── BATCH FOLLOW-UP ──────────────────────────────────────────────────────
+app.post('/api/outreach/followup-batch', async (req,res) => {
+  const { ids, sessionId } = req.body;
+  if (!ids?.length) return res.status(400).json({ error:'No leads selected' });
+  const targets = ids.map(id => findLead(id)).filter(f => f && f.lead.outreachEmail);
+  if (!targets.length) return res.status(400).json({ error:'No eligible leads (need outreach email)' });
+  res.json({ status:'started', count:targets.length });
+  emit(sessionId, { type:'followup_batch', status:'start', message:`🚀 Sending follow-ups to ${targets.length} leads...` });
+  let sent = 0, failed = 0;
+  for (let i = 0; i < targets.length; i++) {
+    const { lead, index } = targets[i];
+    const email = lead.outreachEmail;
+    emit(sessionId, { type:'followup_batch', status:'sending', message:`[${i+1}/${targets.length}] Following up with ${lead.name}...`, progress: Math.round((i/targets.length)*100) });
+    try {
+      const prevOutreach = outreach.find(o => o.leadId === lead.id);
+      const followUp = await generateFollowUpEmail(lead, 1, prevOutreach?.subject || 'Your demo website');
+      const trackingId = randomUUID();
+      const previewUrl = lead.previewUrl||getBase();
+      tracking.push({ trackingId, leadId:lead.id, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
+      save(TF, tracking);
+      const trackingOpts = {
+        pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
+        clickUrl: `${getBase()}/c/${trackingId}`
+      };
+      const result = await sendOutreach(lead, previewUrl, email, ()=>{}, followUp.subject, followUp.body, trackingOpts);
+      outreach.push({ leadId:lead.id, lead:lead.name, type:'followup', ...result });
+      save(OF, outreach);
+      sent++;
+      emit(sessionId, { type:'followup_batch', status:'sent', message:`✅ [${sent}/${targets.length}] Follow-up sent to ${lead.name}` });
+    } catch(e) {
+      failed++;
+      emit(sessionId, { type:'followup_batch', status:'error', message:`❌ ${lead.name}: ${e.message}` });
+    }
+    const delay = 3000 + Math.random() * 5000;
+    await new Promise(r=>setTimeout(r,delay));
+  }
+  emit(sessionId, { type:'followup_batch_done', sent, failed, total:targets.length });
+  emit(sessionId, { type:'followup_batch', status:'complete', message:`🏁 Follow-ups done — ${sent} sent, ${failed} failed` });
+});
+
 // ── SEND SCHEDULING ───────────────────────────────────────────────────────
 app.post('/api/outreach/schedule', (req,res) => {
   const { id, emailAddress, subject, body, sendAt } = req.body;
