@@ -742,25 +742,14 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       </div>
       <button class="btn btn-vio" id="o-prev-btn" onclick="prevEmail()" style="margin-bottom:6px">◈ Preview Email Copy</button>
       <button class="btn btn-main" id="o-send-btn" onclick="sendOut()">▶ Send Outreach</button>
-      <div style="margin-top:6px">
-        <div class="f"><span>Schedule Send</span><input type="datetime-local" id="o-schedule-time"></div>
-        <button class="btn btn-sec" onclick="scheduleOut()">📅 Schedule</button>
-      </div>
     </div>
     <div class="ss" style="padding-top:12px">
-      <div class="lbl">Batch Actions</div>
-      <button class="btn btn-main" id="o-batch-btn" onclick="batchOut()">📨 Send All (Batch)</button>
-      <button class="btn btn-vio" id="o-ab-btn" onclick="abTest()" style="margin-top:6px">🧪 A/B Test Send</button>
-      <button class="btn btn-sec" id="o-fu-btn" onclick="batchFollowUp()" style="margin-top:6px">🔄 Follow-Up Selected</button>
+      <div class="lbl">Follow-Up</div>
+      <button class="btn btn-sec" id="o-fu-btn" onclick="batchFollowUp()">🔄 Follow-Up Selected</button>
       <div class="batch-prog" id="batch-prog" style="display:none">
         <div class="prog"><div class="pb" id="batch-pb"></div></div>
         <div class="batch-msg" id="batch-msg">Preparing...</div>
       </div>
-    </div>
-    <div class="ss" style="padding-top:12px">
-      <div class="lbl">Sequences</div>
-      <button class="btn btn-sec" id="seq-proc-btn" onclick="processSequences()">⏰ Process Due Follow-Ups</button>
-      <button class="btn btn-sec" onclick="processSch()" style="margin-top:6px">📅 Process Scheduled</button>
     </div>
     <div class="feed-wrap" style="margin-top:8px">
       <div class="lbl">Feed</div>
@@ -776,7 +765,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div class="tw">
       <div class="empty" id="o-e"><div class="ei">📨</div><div class="et">No Outreach Sent Yet</div><div class="es">Build demo sites, then send outreach</div></div>
       <table id="o-tbl" style="display:none">
-        <thead><tr><th><input type="checkbox" onchange="oTogAll(this.checked)"></th><th>#</th><th>Business</th><th>Sent To</th><th>Preview</th><th>Sent At</th><th>Tracking</th><th>Sequence</th><th>Status</th></tr></thead>
+        <thead><tr><th><input type="checkbox" onchange="oTogAll(this.checked)"></th><th>#</th><th>Business</th><th>Sent To</th><th>Preview</th><th>Sent At</th><th>Tracking</th><th>Follow-Ups</th><th>Status</th></tr></thead>
         <tbody id="o-tbl-body"></tbody>
       </table>
     </div>
@@ -1360,10 +1349,11 @@ async function buildSel(){
 }
 function prevSite(id){
   siteLead=id;const l=leads.find(x=>x.id===id);if(!l)return;
-  const localUrl=l.siteFile?`/sites/${l.siteFile}`:(l.previewUrl||'');
-  const publicUrl=l.previewUrl&&!l.previewUrl.includes('ngrok')&&!l.previewUrl.includes('localhost')?l.previewUrl:localUrl;
+  const localUrl=l.siteFile?`/sites/${l.siteFile}`:'';
+  const publicUrl=l.previewUrl&&!l.previewUrl.includes('ngrok')&&!l.previewUrl.includes('localhost')?l.previewUrl:'';
+  const iframeSrc=publicUrl||localUrl;
   document.getElementById('site-name').textContent=l.name+' — '+(publicUrl.includes('pages.dev')?`☁️ ${publicUrl}`:l.address);
-  document.getElementById('sframe').src=localUrl;
+  document.getElementById('sframe').src=iframeSrc;
   document.getElementById('site-link').href=publicUrl;
   document.getElementById('site-ov').classList.add('on');
 }
@@ -1461,7 +1451,8 @@ async function startSequence(id){
 }
 function getLeadTracking(id){
   const recs=trackingData.filter(t=>t.leadId===id);
-  return {opens:recs.reduce((s,r)=>s+r.opens.length,0),clicks:recs.reduce((s,r)=>s+r.clicks.length,0)};
+  const followUps=recs.filter(t=>t.type==='followup').length;
+  return {opens:recs.reduce((s,r)=>s+r.opens.length,0),clicks:recs.reduce((s,r)=>s+r.clicks.length,0),followUps};
 }
 function drawOut(){
   const sent=leads.filter(l=>l.outreachEmail),e=document.getElementById('o-e'),t=document.getElementById('o-tbl');
@@ -1479,7 +1470,7 @@ function drawOut(){
     <td>${l.previewUrl?`<a href="${l.previewUrl}" target="_blank" class="ab" style="text-decoration:none;display:inline-block">View ↗</a>`:'—'}</td>
     <td style="font-family:var(--mono);font-size:9.5px;color:var(--t3)">${l.outreachSentAt?new Date(l.outreachSentAt).toLocaleString():''}</td>
     <td>${trackHtml}</td>
-    <td><button class="ab" onclick="startSequence('${l.id}')" style="font-size:9px">+Seq</button></td>
+    <td>${tr.followUps?`<span style="background:rgba(251,191,36,.15);color:#fbbf24;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600">${tr.followUps}x sent</span>`:'<span style="color:var(--t4);font-size:9px">—</span>'}</td>
     <td>${sb(l.status||'Sent')}</td>
   </tr>`;}).join('');
 }
