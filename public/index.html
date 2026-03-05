@@ -568,8 +568,8 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
 <div class="page" id="pg-finder">
   <div class="sb">
     <div class="ss">
-      <div class="lbl">Hunter.io Email Finder</div>
-      <p style="font-size:10.5px;color:var(--t2);line-height:1.7;margin-bottom:14px">Automatically finds business owner emails. Select leads below and run a batch search.</p>
+      <div class="lbl">Email Finder</div>
+      <p style="font-size:10.5px;color:var(--t2);line-height:1.7;margin-bottom:14px">Scrapes Facebook pages, websites, and Hunter.io to find business owner emails. Select leads and run search.</p>
       <div style="font-size:10.5px;color:var(--cyan);font-weight:600;margin-bottom:8px" id="ef-sel-txt">0 selected</div>
       <button class="btn btn-main" id="ef-btn" onclick="efBatch()">▶ Find Emails</button>
       <button class="btn btn-sec" onclick="efSelAll()">Select All Without Email</button>
@@ -995,11 +995,28 @@ function toggleCity(city){
   collapsedCities.has(city)?collapsedCities.delete(city):collapsedCities.add(city);
   drawScout();drawEF();drawB();drawSM();
 }
-function cityHeaderRow(city,count,cols){
+function cityHeaderRow(city,count,cols,selSet,items){
   const col=collapsedCities.has(city);
+  const ids=items?items.map(i=>i.lead.id):[];
+  const allChecked=selSet&&ids.length&&ids.every(id=>selSet.has(id));
+  const cbHtml=selSet?`<input type="checkbox" ${allChecked?'checked':''} onclick="event.stopPropagation();toggleCitySel('${city.replace(/'/g,"\\'")}',this.checked)" style="width:auto;margin:0 8px 0 0;padding:0;accent-color:var(--cyan);vertical-align:middle">`:'';
   return `<tr class="city-hdr" onclick="toggleCity('${city.replace(/'/g,"\\'")}')">
-    <td colspan="${cols}"><span class="city-lbl">${x(city)} <span class="city-cnt">${count}</span><span class="city-arr${col?' collapsed':''}">▼</span></span></td>
+    <td colspan="${cols}"><span class="city-lbl">${cbHtml}${x(city)} <span class="city-cnt">${count}</span><span class="city-arr${col?' collapsed':''}">▼</span></span></td>
   </tr>`;
+}
+function toggleCitySel(city,checked){
+  const group=leads.filter(l=>(l.location||'Unknown').trim()===city);
+  const ids=group.map(l=>l.id);
+  // figure out which tab we're on and use the right selection set
+  const pg=document.querySelector('.page.on')?.id||'';
+  let sel,draw;
+  if(pg==='pg-finder'){sel=efSel;draw=drawEF;}
+  else if(pg==='pg-scout'){sel=sSel;draw=drawScout;}
+  else if(pg==='pg-builder'){sel=bSel;draw=drawB;}
+  else if(pg==='pg-social'){sel=smSel;draw=drawSM;}
+  else return;
+  ids.forEach(id=>{checked?sel.add(id):sel.delete(id);});
+  draw();
 }
 
 // ── SOCIAL FINDER ─────────────────────────────────────────────────────────
@@ -1016,7 +1033,7 @@ function drawSM() {
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,8);
+    if(multi) html+=cityHeaderRow(city,items.length,8,smSel,items);
     if(multi&&collapsedCities.has(city)) continue;
     html+=items.map(({lead:l})=>{
       const s = l.socials || {};
@@ -1207,7 +1224,7 @@ function drawScout(){
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,10);
+    if(multi) html+=cityHeaderRow(city,items.length,10,sSel,items);
     if(multi&&collapsedCities.has(city)) continue;
     html+=items.map(({lead:l,idx:i})=>`<tr>
     <td><input type="checkbox" ${sSel.has(l.id)?'checked':''} onchange="sTog('${l.id}',this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
@@ -1284,7 +1301,7 @@ function drawEF(){
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,6);
+    if(multi) html+=cityHeaderRow(city,items.length,6,efSel,items);
     if(multi&&collapsedCities.has(city)) continue;
     html+=items.map(({lead:l})=>`<tr>
     <td><input type="checkbox" ${efSel.has(l.id)?'checked':''} onchange="efTog('${l.id}',this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
@@ -1322,7 +1339,7 @@ function drawB(){
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,6);
+    if(multi) html+=cityHeaderRow(city,items.length,6,bSel,items);
     if(multi&&collapsedCities.has(city)) continue;
     html+=items.map(({lead:l})=>`<tr>
     <td><input type="checkbox" ${bSel.has(l.id)?'checked':''} onchange="bTog('${l.id}',this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
