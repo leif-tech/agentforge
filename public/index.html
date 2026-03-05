@@ -876,6 +876,16 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <button class="sbtn" onclick="saveSet('hunter')">Save Key</button>
     </div>
     <div class="scard">
+      <div class="scard-t">📘 Facebook Scraper <span class="ss-badge off" id="ss-fb">Not Set</span></div>
+      <div class="f"><span>Email</span><input type="email" id="set-fb-email" placeholder="your@email.com"></div>
+      <div class="f"><span>Password</span><input type="password" id="set-fb-pass" placeholder="••••••••"></div>
+      <div class="ibox">
+        Used to log into Facebook via headless browser and scrape business email from their pages.<br>
+        <strong>Tip:</strong> Use a secondary/burner FB account — automated login may trigger security checks.
+      </div>
+      <button class="sbtn" onclick="saveSet('facebook')">Save Credentials</button>
+    </div>
+    <div class="scard">
       <div class="scard-t">⬡ Google Places API <span class="ss-badge on">Connected ✓</span></div>
       <div class="ibox">Already configured in your .env file. Powers the Scout agent to find local businesses on Google Maps.</div>
     </div>
@@ -1108,9 +1118,12 @@ async function checkCfg(){
     setSS('ss-hu',s.hasHunter);
     setSS('ss-sm',s.hasSmtp);
     setSS('ss-cf',s.hasCloudflare);
+    setSS('ss-fb',s.hasFacebook);
     const saved='✓ Already saved — leave blank to keep';
     setSavedPlaceholder('set-ant', s.hasAnthropicKey, saved);
     setSavedPlaceholder('set-hunter', s.hasHunter, saved);
+    setSavedPlaceholder('set-fb-email', s.hasFacebook, saved);
+    setSavedPlaceholder('set-fb-pass', s.hasFacebook, saved);
     setSavedPlaceholder('set-cf-id', s.hasCloudflare, saved);
     setSavedPlaceholder('set-cf-token', s.hasCloudflare, saved);
     if(s.resendFrom){document.getElementById('set-rf').value=s.resendFrom;}
@@ -1308,7 +1321,7 @@ function drawEF(){
     <td><div class="la">${x(l.address)}</div></td>
     <td>${l.foundEmail?`<span class="badge b-em">${x(l.foundEmail)}</span>`:'<span style="color:var(--t4);font-size:10px">Not found</span>'}</td>
     <td style="font-family:var(--mono);font-size:10px;color:var(--t3)">${l.emailConfidence?l.emailConfidence+'%':'—'}</td>
-    <td><button class="ab" onclick="efOne('${l.id}')">Search</button></td>
+    <td><button class="ab" onclick="efOne('${l.id}')">Search</button> <button class="ab" onclick="efHunter('${l.id}')" style="font-size:8px;opacity:.7">Hunter</button></td>
   </tr>`).join('');
   }
   document.getElementById('ef-body').innerHTML=html;
@@ -1319,6 +1332,7 @@ function efTogAll(c){efSel.clear();if(c)leads.forEach(l=>efSel.add(l.id));drawEF
 function efSelAll(){efSel.clear();leads.forEach(l=>{if(!l.foundEmail)efSel.add(l.id);});drawEF();}
 function efClear(){efSel.clear();const a=document.getElementById('ef-all');if(a)a.checked=false;drawEF();}
 async function efOne(id){const l=leads.find(x=>x.id===id);log('ef-feed',`Searching ${l?.name||id}...`);await post('/api/emailfinder/find',{id,sessionId:sid});}
+async function efHunter(id){const l=leads.find(x=>x.id===id);log('ef-feed',`Hunter.io → ${l?.name||id}...`);await post('/api/emailfinder/hunter',{id,sessionId:sid});}
 async function efBatch(){
   if(!efSel.size){log('ef-feed','Select leads first','er');return;}
   btn('ef-btn','Searching...',true);
@@ -1649,6 +1663,7 @@ async function saveSet(s){
   if(s==='anthropic'){b.anthropicKey=document.getElementById('set-ant').value.trim();if(!b.anthropicKey){alert('Enter key');return;}}
   if(s==='hunter'){b.hunterKey=document.getElementById('set-hunter').value.trim();if(!b.hunterKey){alert('Enter key');return;}}
   if(s==='cloudflare'){b.cloudflareAccountId=document.getElementById('set-cf-id').value.trim();b.cloudflareApiToken=document.getElementById('set-cf-token').value.trim();if(!b.cloudflareAccountId||!b.cloudflareApiToken){alert('Enter both Account ID and API Token');return;}}
+  if(s==='facebook'){b.fbEmail=document.getElementById('set-fb-email').value.trim();b.fbPassword=document.getElementById('set-fb-pass').value.trim();if(!b.fbEmail||!b.fbPassword){alert('Enter both email and password');return;}}
   if(s==='smtp'){b.resendApiKey=document.getElementById('set-rk').value.trim();b.resendFrom=document.getElementById('set-rf').value.trim();if(!b.resendApiKey||!b.resendFrom){alert('Fill all fields');return;}}
   await post('/api/settings',b);await checkCfg();alert('Saved ✓');
 }

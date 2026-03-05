@@ -13,7 +13,7 @@ const { buildDemoSite }         = require('./agents/builder');
 const { deployDemoSite: cfDeploy, isConfigured: cfConfigured } = require('./agents/cloudflare');
 const { sendOutreach, generateEmailPreview, generateFollowUpEmail, generateDMScript, generateABSubjects } = require('./agents/outreach');
 const { handleReply }           = require('./agents/closer');
-const { findEmail, checkCredits } = require('./agents/emailfinder');
+const { findEmail, hunterSearch, checkCredits } = require('./agents/emailfinder');
 const { findSocialMedia }       = require('./agents/socialfinder');
 
 const app = express();
@@ -263,6 +263,25 @@ app.post('/api/emailfinder/find-batch', async (req,res) => {
   }
   emit(sessionId, { type:'emailfinder_batch_done', found, total:ids.length });
   emit(sessionId, { type:'emailfinder', status:'complete', message:`🏁 Done — ${found}/${ids.length} emails found` });
+});
+
+app.post('/api/emailfinder/hunter', async (req,res) => {
+  const { id, sessionId } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  const { lead, index } = f;
+  res.json({ status:'started' });
+  try {
+    emit(sessionId, { type:'emailfinder', status:'searching', message:`🔍 Hunter.io search for ${lead.name}...` });
+    const result = await hunterSearch(lead, p => emit(sessionId,{ type:'emailfinder',...p }));
+    if (result) {
+      leads[index].foundEmail=result.email;
+      leads[index].emailConfidence=result.confidence;
+      save(LF,leads);
+      emit(sessionId, { type:'emailfinder', status:'found', message:`✅ Hunter.io: ${result.email} (${result.confidence}%)` });
+    }
+    emit(sessionId, { type:'emailfinder_done', leadId:id, email:result?.email||null, confidence:result?.confidence||null });
+  } catch(e) { emit(sessionId, { type:'error', agent:'emailfinder', message:e.message }); }
 });
 
 app.get('/api/emailfinder/credits', async (req,res) => {
@@ -881,11 +900,12 @@ app.get('/api/settings', (req,res) => res.json({
   hasSmtp: !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM),
   hasHunter: !!process.env.HUNTER_API_KEY,
   hasCloudflare: !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN),
+  hasFacebook: !!(process.env.FB_EMAIL && process.env.FB_PASSWORD),
   resendFrom: process.env.RESEND_FROM||'',
 }));
 
 app.post('/api/settings', (req,res) => {
-  const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken } = req.body;
+  const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken, fbEmail, fbPassword } = req.body;
   const ep = fs.existsSync(path.join(__dirname,'leads')) ? path.join(__dirname,'leads','.env') : path.join(__dirname,'.env');
   let env = fs.existsSync(ep)?fs.readFileSync(ep,'utf8'):'';
   const set = (k,v) => {
@@ -900,6 +920,8 @@ app.post('/api/settings', (req,res) => {
   set('HUNTER_API_KEY',hunterKey);
   set('CLOUDFLARE_ACCOUNT_ID',cloudflareAccountId);
   set('CLOUDFLARE_API_TOKEN',cloudflareApiToken);
+  set('FB_EMAIL',fbEmail);
+  set('FB_PASSWORD',fbPassword);
   fs.writeFileSync(ep,env.trim());
   res.json({ok:true});
 });
