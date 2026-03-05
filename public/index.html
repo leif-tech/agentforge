@@ -479,7 +479,6 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
   <div class="tab on"  onclick="go('scout')">⬡ Scout</div>
   <div class="tab"     onclick="go('finder')">◈ Email Finder</div>
   <div class="tab"     onclick="go('builder')">◉ Builder</div>
-  <div class="tab"     onclick="go('social')">⬡ Social</div>
   <div class="tab"     onclick="go('outreach')">◎ Outreach</div>
   <div class="tab"     onclick="go('closer')">⬢ Closer</div>
   <div class="tab"     onclick="go('pipeline')">▥ Pipeline</div>
@@ -658,54 +657,6 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
 
 
 <!-- ══════════ SOCIAL FINDER ══════════ -->
-<div class="page" id="pg-social">
-  <div class="sb">
-    <div class="ss">
-      <div class="lbl">Social Media Finder</div>
-      <p style="font-size:10.5px;color:var(--t2);line-height:1.7;margin-bottom:14px">Finds Instagram, Facebook and TikTok profiles for leads that already have a demo site built. Only works after Builder.</p>
-      <div style="font-size:10.5px;color:var(--cyan);font-weight:600;margin-bottom:8px" id="sm-sel-txt">0 selected</div>
-      <button class="btn btn-main" id="sm-btn" onclick="smBatch()">▶ Find Social Media</button>
-      <button class="btn btn-sec" onclick="smSelAll()">Select All With Site Built</button>
-      <button class="btn btn-sec" onclick="smClear()">Clear Selection</button>
-    </div>
-    <div class="sg">
-      <div class="sc"><div class="sl">Total Leads</div><div class="sv" id="sm-tot">0</div></div>
-      <div class="sc"><div class="sl">Socials Found</div><div class="sv dim" id="sm-found">0</div></div>
-    </div>
-    <div class="feed-wrap">
-      <div class="lbl">Search Feed</div>
-      <div class="prog"><div class="pb" id="sm-pb"></div></div>
-      <div class="feed" id="sm-feed"><div class="fl">Waiting...</div></div>
-    </div>
-    <div class="gap"></div>
-  </div>
-  <div class="main">
-    <div class="mh">
-      <div class="mt">SOCIAL PROFILES</div>
-      <div class="cnt" id="sm-badge">0 leads</div>
-      <div class="acts">
-        <button class="ab" onclick="smSelAll()">Select All</button>
-        <button class="ab v" onclick="go('outreach')">→ Outreach</button>
-      </div>
-    </div>
-    <div class="tw">
-      <div class="empty" id="sm-e"><div class="ei">📱</div><div class="et">No Leads Yet</div><div class="es">Build demo sites first, then find their social profiles</div></div>
-      <table id="sm-tbl" style="display:none">
-        <thead><tr>
-          <th><input type="checkbox" id="sm-all" onchange="smTogAll(this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></th>
-          <th>Business</th>
-          <th>Instagram</th>
-          <th>Facebook</th>
-          <th>TikTok</th>
-          <th>Status</th>
-          <th></th>
-          <th>DM</th>
-        </tr></thead>
-        <tbody id="sm-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════ OUTREACH ══════════ -->
 <div class="page" id="pg-outreach">
@@ -1422,14 +1373,16 @@ async function prevEmail(){
   if(!id){alert('Select a lead first');return;}
   document.getElementById('o-prev-btn').textContent='Generating...';
   try{
-    const d=await(await fetch('/api/outreach/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})).json();
+    const r=await fetch('/api/outreach/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+    const d=await r.json();
     if(d.ok){
       document.getElementById('o-subj').value=d.copy.subject;
       document.getElementById('o-email-body').value=d.copy.body;
       document.getElementById('o-prev-box').style.display='block';
+      if(d.copy.samples){document.getElementById('o-samples-box').style.display='block';document.getElementById('o-s1').textContent=d.copy.samples.instagram_post||'';document.getElementById('o-s2').textContent=d.copy.samples.review_response||'';document.getElementById('o-s3').textContent=d.copy.samples.followup_message||'';}
     }
-    else alert('Error: '+d.error);
-  }catch{alert('Failed. Is your Anthropic key saved in Settings?');}
+    else alert('Error: '+(d.error||'Unknown error. Check your Anthropic API key in Settings.'));
+  }catch(e){alert('Failed: '+e.message+'. Is your Anthropic key saved in Settings?');}
   document.getElementById('o-prev-btn').textContent='◈ Preview Email Copy';
 }
 async function sendOut(){
