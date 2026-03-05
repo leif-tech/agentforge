@@ -13,6 +13,14 @@ function parseJSON(text) {
   return null;
 }
 
+function cleanCopy(obj) {
+  if (!obj) return obj;
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'string') obj[key] = obj[key].replace(/—/g, '-');
+  }
+  return obj;
+}
+
 function buildEmailPrompt(lead, previewUrl, type) {
   return `Write a cold outreach email from Leif to the owner of "${lead.name}", a ${type} at ${lead.address}.
 Google rating: ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews' : 'not yet rated'}.
@@ -67,6 +75,7 @@ Rules:
 - No corporate language or buzzwords
 - Subject line: short (under 9 words), sounds like a real person texting not a marketer emailing, creates a "wait, what?" reaction — ideally references something they built or did for this specific business. Examples of the right tone: "I built something for you", "took a look at your place", "made this for [Business Name]", "had an idea about [Business Name]". Never use exclamation marks, never sound like a newsletter, never use words like "partnership", "opportunity", "grow", or "free"
 - Sign off: Leif, WebForge
+- NEVER use em dashes (—) anywhere in the subject or body. Use commas, periods, or dashes (-) instead.
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
@@ -108,7 +117,7 @@ async function generateEmailCopy(lead, previewUrl) {
   });
   const result = parseJSON(msg.content[0].text);
   if (!result?.subject || !result?.body) throw new Error('Failed to generate email. Try again.');
-  return result;
+  return cleanCopy(result);
 }
 
 async function generateEmailPreview(lead, previewUrl) {
@@ -148,24 +157,24 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     samplesHtml = `
       <hr style="border:none;border-top:1px solid #e8e8e8;margin:28px 0">
       <p style="font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 4px">Your 5 Free Deliverables</p>
-      <p style="font-size:11.5px;color:#999;margin:0 0 22px">Ready to use — no editing needed.</p>
+      <p style="font-size:11.5px;color:#999;margin:0 0 22px">Ready to use - no editing needed.</p>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">01 — Custom Demo Website</p>
+      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">01 - Custom Demo Website</p>
       <a href="${linkUrl}" style="font-size:12.5px;color:#4f46e5;word-break:break-all;display:block;margin-bottom:20px">${previewUrl}</a>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">02 — Instagram Caption</p>
+      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">02 - Instagram Caption</p>
       <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.instagram_post || ''}</div>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">03 — Google Review Response</p>
+      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">03 - Google Review Response</p>
       <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.review_response || ''}</div>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">04 — Customer Follow-Up Message</p>
+      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">04 - Customer Follow-Up Message</p>
       <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.followup_message || ''}</div>
 
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">05 — Online Presence Audit</p>
+      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">05 - Online Presence Audit</p>
       <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75">
-        <strong>Website:</strong> No website found — your demo shows what is possible within 24 hours.<br><br>
-        <strong>Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews — strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
+        <strong>Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
+        <strong>Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
         <strong>Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
         <strong>Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.
       </div>
@@ -202,7 +211,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
         ${samplesHtml}
       </div>
       <div style="background:#f8f8f8;padding:14px 28px;border:1px solid #e8e8e8;border-top:none;border-radius:0 0 8px 8px">
-        <p style="font-size:11px;color:#bbb;margin:0">WebForge — Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
+        <p style="font-size:11px;color:#bbb;margin:0">WebForge - Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
       </div>
       ${pixelHtml}
     </div>`
@@ -239,6 +248,7 @@ Rules:
 - No corporate language
 - Subject line: short, casual, different from the original
 - Sign off: Leif
+- NEVER use em dashes (—) anywhere. Use commas, periods, or dashes (-) instead.
 
 Return ONLY valid JSON: {"subject":"...","body":"..."}`
     }]
@@ -246,7 +256,7 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`
 
   const result = parseJSON(msg.content[0].text);
   if (!result?.subject || !result?.body) throw new Error('Failed to generate follow-up.');
-  return result;
+  return cleanCopy(result);
 }
 
 // ── DM SCRIPT GENERATION ──────────────────────────────────────────────────
