@@ -33,11 +33,12 @@ What Leif already built for them (for free):
 - A fully custom demo website, live right now at: ${previewUrl}
 
 What Leif is handing over completely free:
-1. The live demo website (already built): ${previewUrl}
+1. The live demo website (already built): ${previewUrl} — and Leif will make it their real, live website for free too. The demo is just the starting point, but they get to keep a fully finished site at no cost.
 2. A ready-to-post Instagram caption written for their business
 3. A professional Google review response template
 4. A customer follow-up message for after visits
 5. A full online presence audit — website, socials, reviews, local visibility
+All of this is theirs to keep. All Leif is asking for in return is a quick 5-10 minute call, that is it.
 
 What WebForge does with AI (beyond this free offer):
 - Custom websites built and maintained with AI
@@ -54,8 +55,8 @@ Email structure:
 1. Opening — something genuinely specific about this business. Their rating, reviews, or something real about them. Make it feel like Leif actually looked them up. Warm, human, not corporate.
 2. Leif introduces himself as the founder of WebForge — not "I work with WebForge" or "I'm part of WebForge". He started it. Use natural phrasing like "I'm Leif — I started WebForge" or "I run WebForge". Then one sentence on what WebForge does with AI for local businesses. Personal, not a company pitch.
 3. Tell them about the demo site — include the actual URL ${previewUrl} so they can click it. Be clear: this is just a demo to show what is possible. The real site they get will be fully built around what they actually want — their style, colors, feel, everything. It can look completely different. The demo is just a taste.
-4. List the 5 free things clearly so the value feels undeniable.
-5. The exchange — honest and direct: everything is free, and all Leif asks in return is a quick 5-10 minute call just to hear what they are currently struggling with in their business. That is it. Or if they prefer, they can just reply to this email and share what challenges they are facing. Either way works. Make this feel effortless.
+4. List the 5 free things clearly so the value feels undeniable. Make it very clear that the website is theirs, Leif will make it live for them for free. After listing the 5 items, reinforce that all they need to do is hop on a quick 5-10 minute call, that is it.
+5. The exchange — honest and direct: everything is free including making their website live. All Leif asks in return is a quick 5-10 minute call just to hear what they are currently struggling with in their business. That is it. Or if they prefer, they can just reply to this email and share what challenges they are facing. Either way works. Make this feel effortless.
 6. One line about everything else WebForge can handle with AI if they want to scale — make it feel like there is a lot more available.
 7. Sign off as Leif, WebForge — personal, confident, not corporate.
 
