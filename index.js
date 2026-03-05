@@ -11,7 +11,7 @@ const session = require('express-session');
 const { runScout }              = require('./agents/scout');
 const { buildDemoSite }         = require('./agents/builder');
 const { deployDemoSite: cfDeploy, isConfigured: cfConfigured } = require('./agents/cloudflare');
-const { sendOutreach, generateEmailPreview, generateFollowUpEmail, generateDMScript, generateABSubjects } = require('./agents/outreach');
+const { sendOutreach, generateEmailPreview, generateFollowUpEmail } = require('./agents/outreach');
 const { handleReply }           = require('./agents/closer');
 const { findEmail, hunterSearch, checkCredits } = require('./agents/emailfinder');
 const { findSocialMedia }       = require('./agents/socialfinder');
@@ -704,93 +704,6 @@ app.post('/api/leads/score', (req,res) => {
   res.json({ ok:true, leads });
 });
 
-// ── DM SCRIPT GENERATOR ──────────────────────────────────────────────────
-app.post('/api/dm-script', async (req,res) => {
-  const { id, platform } = req.body;
-  const f = findLead(id);
-  if (!f) return res.status(404).json({ error:'Lead not found' });
-  try {
-    const scripts = await generateDMScript(f.lead, platform || 'instagram');
-    res.json({ ok:true, scripts });
-  } catch(e) { res.status(500).json({ error:e.message }); }
-});
-
-// ── A/B TESTING ───────────────────────────────────────────────────────────
-app.post('/api/outreach/ab-send', async (req,res) => {
-  const { ids, sessionId } = req.body;
-  const targets = (ids && ids.length ? ids : leads.map(l=>l.id))
-    .map(id => findLead(id))
-    .filter(f => f && f.lead.foundEmail && !outreach.find(o=>o.leadId===f.lead.id&&o.sentTo===f.lead.foundEmail));
-  if (targets.length < 2) return res.status(400).json({ error:'Need at least 2 eligible leads for A/B test' });
-  res.json({ status:'started', count:targets.length });
-  emit(sessionId, { type:'ab_test', status:'start', message:`🧪 A/B test with ${targets.length} leads...` });
-  try {
-    // Generate 2 subject variations for the first lead as template
-    const sampleLead = targets[0].lead;
-    const variants = await generateABSubjects(sampleLead, sampleLead.previewUrl||getBase());
-    const testId = randomUUID();
-    const half = Math.ceil(targets.length / 2);
-    let sent = 0;
-    for (let i = 0; i < targets.length; i++) {
-      const { lead, index } = targets[i];
-      const variant = i < half ? 'A' : 'B';
-      const subjectLine = variant === 'A' ? variants.subjectA : variants.subjectB;
-      const email = lead.foundEmail;
-      emit(sessionId, { type:'ab_test', status:'sending', message:`[${i+1}/${targets.length}] (${variant}) ${lead.name}...`, progress: Math.round((i/targets.length)*100) });
-      try {
-        const trackingId = randomUUID();
-        const previewUrl = lead.previewUrl||getBase();
-        tracking.push({ trackingId, leadId:lead.id, type:'ab_test', opens:[], clicks:[], targetUrl:previewUrl, abVariant:variant, abTestId:testId, createdAt:new Date().toISOString() });
-        save(TF, tracking);
-        const trackingOpts = {
-          pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
-          clickUrl: `${getBase()}/c/${trackingId}`
-        };
-        const result = await sendOutreach(lead, previewUrl, email, ()=>{}, subjectLine, null, trackingOpts);
-        outreach.push({ leadId:lead.id, lead:lead.name, abTestId:testId, abVariant:variant, ...result });
-        save(OF, outreach);
-        leads[index].status='Outreach Sent';
-        leads[index].outreachEmail=email;
-        leads[index].outreachSentAt=result.sentAt;
-        save(LF, leads);
-        sent++;
-        emit(sessionId, { type:'ab_test', status:'sent', message:`✅ [${sent}/${targets.length}] (${variant}) ${lead.name}` });
-      } catch(e) {
-        emit(sessionId, { type:'ab_test', status:'error', message:`❌ ${lead.name}: ${e.message}` });
-      }
-      await new Promise(r=>setTimeout(r, 3000 + Math.random()*5000));
-    }
-    emit(sessionId, { type:'ab_test_done', testId, sent, total:targets.length, subjectA:variants.subjectA, subjectB:variants.subjectB });
-    emit(sessionId, { type:'ab_test', status:'complete', message:`🏁 A/B test done — ${sent} emails sent` });
-  } catch(e) {
-    emit(sessionId, { type:'ab_test', status:'error', message:`❌ ${e.message}` });
-  }
-});
-
-app.get('/api/outreach/ab-results', (req,res) => {
-  // Group by abTestId
-  const tests = {};
-  tracking.filter(t => t.abTestId).forEach(t => {
-    if (!tests[t.abTestId]) tests[t.abTestId] = { A: { sent:0, opens:0, clicks:0 }, B: { sent:0, opens:0, clicks:0 } };
-    const v = tests[t.abTestId][t.abVariant];
-    if (v) {
-      v.sent++;
-      if (t.opens.length) v.opens++;
-      if (t.clicks.length) v.clicks++;
-    }
-  });
-  // Get subject lines from outreach records
-  Object.keys(tests).forEach(testId => {
-    const oA = outreach.find(o => o.abTestId === testId && o.abVariant === 'A');
-    const oB = outreach.find(o => o.abTestId === testId && o.abVariant === 'B');
-    tests[testId].subjectA = oA?.subject || '';
-    tests[testId].subjectB = oB?.subject || '';
-    tests[testId].A.openRate = tests[testId].A.sent ? Math.round((tests[testId].A.opens/tests[testId].A.sent)*100) : 0;
-    tests[testId].B.openRate = tests[testId].B.sent ? Math.round((tests[testId].B.opens/tests[testId].B.sent)*100) : 0;
-    tests[testId].winner = tests[testId].A.openRate >= tests[testId].B.openRate ? 'A' : 'B';
-  });
-  res.json({ tests });
-});
 
 // ── ANALYTICS (enhanced) ─────────────────────────────────────────────────
 app.get('/api/analytics', (req,res) => {

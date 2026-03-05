@@ -656,7 +656,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
 </div>
 
 
-<!-- ══════════ SOCIAL FINDER ══════════ -->
+
 
 <!-- ══════════ OUTREACH ══════════ -->
 <div class="page" id="pg-outreach">
@@ -794,10 +794,6 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
         <div class="pct">Per City Breakdown</div>
         <div id="a-cities"></div>
       </div>
-      <div class="pc">
-        <div class="pct">A/B Test Results</div>
-        <div id="a-ab"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -907,23 +903,9 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
   </div>
 </div>
 
-<!-- DM SCRIPT MODAL -->
-<div class="ov" id="dm-ov">
-  <div class="modal" style="width:600px">
-    <div class="modal-t">DM Scripts — <span id="dm-name"></span></div>
-    <button class="modal-x" onclick="closeOv('dm-ov')">✕</button>
-    <div style="display:flex;gap:6px;margin-bottom:12px">
-      <button class="ab" id="dm-ig" onclick="genDM('instagram')" style="border-color:rgba(124,58,237,.4);color:var(--violet2)">Instagram</button>
-      <button class="ab" id="dm-fb" onclick="genDM('facebook')">Facebook</button>
-    </div>
-    <div id="dm-loading" style="display:none;font-size:11px;color:var(--cyan)">Generating scripts...</div>
-    <div id="dm-results"></div>
-  </div>
-</div>
-
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────
-let leads=[], lastReply=null, siteLead=null, trackingData=[], notesLeadId=null, dmLeadId=null;
+let leads=[], lastReply=null, siteLead=null, trackingData=[], notesLeadId=null;
 let sSel=new Set(), efSel=new Set(), bSel=new Set();
 let collapsedCities=new Set();
 let sid='af_'+Math.random().toString(36).substr(2,9);
@@ -953,7 +935,7 @@ function groupByLocation(arr){
 }
 function toggleCity(city){
   collapsedCities.has(city)?collapsedCities.delete(city):collapsedCities.add(city);
-  drawScout();drawEF();drawB();drawSM();
+  drawScout();drawEF();drawB();
 }
 function cityHeaderRow(city,count,cols,selSet,items){
   const col=collapsedCities.has(city);
@@ -973,65 +955,9 @@ function toggleCitySel(city,checked){
   if(pg==='pg-finder'){sel=efSel;draw=drawEF;}
   else if(pg==='pg-scout'){sel=sSel;draw=drawScout;}
   else if(pg==='pg-builder'){sel=bSel;draw=drawB;}
-  else if(pg==='pg-social'){sel=smSel;draw=drawSM;}
   else return;
   ids.forEach(id=>{checked?sel.add(id):sel.delete(id);});
   draw();
-}
-
-// ── SOCIAL FINDER ─────────────────────────────────────────────────────────
-let smSel = new Set();
-
-function drawSM() {
-  const e = document.getElementById('sm-e'), t = document.getElementById('sm-tbl');
-  document.getElementById('sm-tot').textContent = leads.length;
-  document.getElementById('sm-found').textContent = leads.filter(l => l.socials?.foundCount > 0).length;
-  document.getElementById('sm-badge').textContent = leads.length + ' leads';
-  if (!leads.length) { e.style.display='flex'; t.style.display='none'; return; }
-  e.style.display='none'; t.style.display='table';
-  const groups=groupByLocation(leads);
-  const multi=groups.size>1;
-  let html='';
-  for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,8,smSel,items);
-    if(multi&&collapsedCities.has(city)) continue;
-    html+=items.map(({lead:l})=>{
-      const s = l.socials || {};
-      const ig = s.instagram ? `<a href="${s.instagram.url}" target="_blank" class="badge b-em" style="text-decoration:none">IG ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
-      const fb = s.facebook ? `<a href="${s.facebook.url}" target="_blank" class="badge b-built" style="text-decoration:none">FB ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
-      const tt = s.tiktok ? `<a href="${s.tiktok.url}" target="_blank" class="badge b-vio" style="text-decoration:none">TT ↗</a>` : '<span style="color:var(--t4);font-size:10px">—</span>';
-      return `<tr>
-        <td><input type="checkbox" ${smSel.has(l.id)?'checked':''} onchange="smTog('${l.id}',this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
-        <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
-        <td>${ig}</td>
-        <td>${fb}</td>
-        <td>${tt}</td>
-        <td>${l.socials ? `<span class="badge b-rep">${l.socials.foundCount} found</span>` : '<span class="badge b-new">Ready</span>'}</td>
-        <td><button class="ab" onclick="smOne('${l.id}')">Search</button></td>
-        <td>${l.socials?.foundCount ? `<button class="ab" onclick="openDM('${l.id}')">DM</button>` : ''}</td>
-      </tr>`;
-    }).join('');
-  }
-  document.getElementById('sm-body').innerHTML=html;
-  document.getElementById('sm-sel-txt').textContent = smSel.size + ' selected';
-}
-
-function smTog(id, c) { c ? smSel.add(id) : smSel.delete(id); document.getElementById('sm-sel-txt').textContent = smSel.size + ' selected'; }
-function smTogAll(c) { smSel.clear(); if(c) leads.forEach(l => smSel.add(l.id)); drawSM(); }
-function smSelAll() { smSel.clear(); leads.forEach(l => smSel.add(l.id)); drawSM(); }
-function smClear() { smSel.clear(); const a=document.getElementById('sm-all');if(a)a.checked=false; drawSM(); }
-
-async function smOne(id) {
-  const l = leads.find(x=>x.id===id);
-  log('sm-feed', `Searching social media for ${l?.name||id}...`, 'hi');
-  await post('/api/social/find', { id, sessionId: sid });
-}
-
-async function smBatch() {
-  if (!smSel.size) { log('sm-feed', 'Select leads first', 'er'); return; }
-  btn('sm-btn', 'Searching...', true);
-  bar('sm-pb', 10);
-  await post('/api/social/find-batch', { ids: [...smSel], sessionId: sid });
 }
 
 async function boot(){
@@ -1092,10 +1018,9 @@ function go(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('pg-'+name).classList.add('on');
-  const icons={scout:'⬡ Scout',finder:'◈ Email Finder',builder:'◉ Builder',social:'⬡ Social',outreach:'◎ Outreach',closer:'⬢ Closer',pipeline:'▥ Pipeline',analytics:'▤ Analytics',settings:'⚙ Settings'};
+  const icons={scout:'⬡ Scout',finder:'◈ Email Finder',builder:'◉ Builder',outreach:'◎ Outreach',closer:'⬢ Closer',pipeline:'▥ Pipeline',analytics:'▤ Analytics',settings:'⚙ Settings'};
   document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.trim()===icons[name])t.classList.add('on');});
   if(name==='builder')drawB();
-  if(name==='social')drawSM();
   if(name==='finder')drawEF();
   if(name==='outreach'){drawOut();fillSels();}
   if(name==='closer')fillSels();
@@ -1123,32 +1048,16 @@ function onSSE(d){
     log('o-feed',d.message,d.status==='sent'?'gr':d.status==='error'?'er':'');
     if(d.progress!=null){bar('batch-pb',d.progress);document.getElementById('batch-msg').textContent=d.message;}
   }
-  if(d.type==='outreach_batch_done'){btn('o-batch-btn','📨 Send All (Batch)',false);document.getElementById('batch-prog').style.display='none';bar('batch-pb',0);drawOut();loadLeads();}
   if(d.type==='followup_batch'){log('o-feed',d.message,d.status==='sent'?'gr':d.status==='error'?'er':'');if(d.progress!==undefined)bar('batch-pb',d.progress);}
   if(d.type==='followup_batch_done'){btn('o-fu-btn','🔄 Follow-Up Selected',false);document.getElementById('batch-prog').style.display='none';bar('batch-pb',0);oSel.clear();drawOut();loadLeads();}
-  if(d.type==='ab_test'){
-    log('o-feed',d.message,d.status==='sent'?'gr':d.status==='error'?'er':'hi');
-    if(d.progress!=null){bar('batch-pb',d.progress);document.getElementById('batch-msg').textContent=d.message;}
-  }
-  if(d.type==='ab_test_done'){btn('o-ab-btn','🧪 A/B Test Send',false);document.getElementById('batch-prog').style.display='none';drawOut();loadLeads();}
   if(d.type==='closer')log('c-feed',d.message,d.status==='done'?'gr':'');
   if(d.type==='closer_done'){btn('c-btn','▶ Generate Response',false);lastReply=d.response;showReply(d.response);addCC(d.response,document.getElementById('c-reply').value);document.getElementById('c-badge').textContent=document.querySelectorAll('.cc').length+' handled';}
-  if(d.type==='social'){
-    log('sm-feed',d.message,d.status==='found'||d.status==='done'||d.status==='complete'?'gr':d.status==='error'?'er':d.status==='skip'?'wn':'');
-  }
   if(d.type==='social_done'){
-    if(d.leadId){const l=findLeadLocal(d.leadId);if(l)l.socials=d.result;drawSM();updStats();}
-    const pct=Math.min(100,Math.round((leads.filter(l=>l.socials).length/leads.length)*100));
-    bar('sm-pb',pct);
-  }
-  if(d.type==='social_batch_done'){
-    btn('sm-btn','▶ Find Social Media',false);
-    bar('sm-pb',100);setTimeout(()=>bar('sm-pb',0),2000);
-    log('sm-feed',`✓ Done — ${d.found}/${d.total} leads have social profiles`,'gr');
+    if(d.leadId){const l=findLeadLocal(d.leadId);if(l)l.socials=d.result;updStats();}
   }
   if(d.type==='sequence_sent'||d.type==='sequence_error')log('o-feed',d.message,d.type==='sequence_sent'?'gr':'er');
   if(d.type==='scheduled_sent'||d.type==='scheduled_error')log('o-feed',d.message,d.type==='scheduled_sent'?'gr':'er');
-  if(d.type==='error'){const fm={scout:'s-feed',emailfinder:'ef-feed',builder:'b-feed',outreach:'o-feed',closer:'c-feed',social:'sm-feed'};log(fm[d.agent]||'s-feed','✗ '+d.message,'er');const bm={scout:'scout-btn',emailfinder:'ef-btn',builder:'b-btn',outreach:'o-send-btn',closer:'c-btn'};if(bm[d.agent])btn(bm[d.agent],null,false);}
+  if(d.type==='error'){const fm={scout:'s-feed',emailfinder:'ef-feed',builder:'b-feed',outreach:'o-feed',closer:'c-feed'};log(fm[d.agent]||'s-feed','✗ '+d.message,'er');const bm={scout:'scout-btn',emailfinder:'ef-btn',builder:'b-btn',outreach:'o-send-btn',closer:'c-btn'};if(bm[d.agent])btn(bm[d.agent],null,false);}
 }
 
 // ── TYPE PICKER ───────────────────────────────────────────────────────────
@@ -1221,8 +1130,8 @@ async function sDelSel(){
   const ids=[...sSel];
   await post('/api/leads/delete-batch',{ids});
   leads=leads.filter(l=>!ids.includes(l.id));
-  sSel.clear();efSel.clear();bSel.clear();smSel.clear();
-  drawScout();drawB();drawEF();drawSM();updStats();
+  sSel.clear();efSel.clear();bSel.clear();
+  drawScout();drawB();drawEF();updStats();
   log('s-feed',`✓ Deleted ${ids.length} lead(s)`,'gr');
 }
 
@@ -1239,19 +1148,19 @@ function updStats(){
   document.getElementById('b-badge').textContent=t+' leads';
 }
 
-async function delLead(id){await fetch(`/api/leads/${id}`,{method:'DELETE'});leads=leads.filter(l=>l.id!==id);sSel.delete(id);efSel.delete(id);bSel.delete(id);smSel.delete(id);drawScout();drawEF();drawB();drawSM();updStats();}
+async function delLead(id){await fetch(`/api/leads/${id}`,{method:'DELETE'});leads=leads.filter(l=>l.id!==id);sSel.delete(id);efSel.delete(id);bSel.delete(id);drawScout();drawEF();drawB();updStats();}
 async function delSel(){
   if(!bSel.size){log('b-feed','Select leads to delete first','er');return;}
   if(!confirm(`Delete ${bSel.size} selected lead(s)? This cannot be undone.`))return;
   const ids=[...bSel];
   await post('/api/leads/delete-batch',{ids});
   leads=leads.filter(l=>!ids.includes(l.id));
-  sSel.clear();bSel.clear();efSel.clear();smSel.clear();
-  drawScout();drawB();drawEF();drawSM();updStats();
+  sSel.clear();bSel.clear();efSel.clear();
+  drawScout();drawB();drawEF();updStats();
   log('b-feed',`✓ Deleted ${ids.length} lead(s)`,'gr');
 }
 async function exportCSV(){window.open('/api/leads/export/csv','_blank');}
-async function clearLeads(){if(!confirm('Clear all leads?'))return;leads=[];sSel.clear();efSel.clear();bSel.clear();smSel.clear();await fetch('/api/leads',{method:'DELETE'});drawScout();updStats();}
+async function clearLeads(){if(!confirm('Clear all leads?'))return;leads=[];sSel.clear();efSel.clear();bSel.clear();await fetch('/api/leads',{method:'DELETE'});drawScout();updStats();}
 async function loadLeads(){try{const d=await(await fetch('/api/leads')).json();leads=d.leads||[];drawScout();updStats();}catch{}}
 async function loadTracking(){try{const d=await(await fetch('/api/tracking')).json();trackingData=d.tracking||[];}catch{trackingData=[];}}
 
@@ -1396,42 +1305,6 @@ async function sendOut(){
   log('o-feed',`Sending to ${em}...`,'hi');
   await post('/api/outreach/send',{id,emailAddress:em,sessionId:sid,subject,body});
 }
-async function scheduleOut(){
-  const id=document.getElementById('o-lead').value,em=document.getElementById('o-email').value.trim();
-  const sendAt=document.getElementById('o-schedule-time').value;
-  if(!id||!em||!sendAt){alert('Select lead, enter email, and pick time');return;}
-  const subject=document.getElementById('o-subj')?.value?.trim()||'';
-  const body=document.getElementById('o-email-body')?.value?.trim()||'';
-  await post('/api/outreach/schedule',{id,emailAddress:em,subject,body,sendAt:new Date(sendAt).toISOString()});
-  log('o-feed',`📅 Scheduled for ${new Date(sendAt).toLocaleString()}`,'gr');
-}
-async function batchOut(){
-  btn('o-batch-btn','Sending...',true);
-  document.getElementById('batch-prog').style.display='block';
-  document.getElementById('batch-msg').textContent='Starting batch...';
-  bar('batch-pb',5);
-  await post('/api/outreach/batch',{ids:[],sessionId:sid});
-}
-async function abTest(){
-  btn('o-ab-btn','Running...',true);
-  document.getElementById('batch-prog').style.display='block';
-  document.getElementById('batch-msg').textContent='Starting A/B test...';
-  bar('batch-pb',5);
-  await post('/api/outreach/ab-send',{ids:[],sessionId:sid});
-}
-async function processSequences(){
-  btn('seq-proc-btn','Processing...',true);
-  const d=await(await fetch('/api/sequences/process',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid})})).json();
-  btn('seq-proc-btn','⏰ Process Due Follow-Ups',false);
-  log('o-feed',`Processed ${d.processed} follow-up(s)`,'gr');
-}
-async function processSch(){
-  const d=await(await fetch('/api/scheduled/process',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid})})).json();
-  log('o-feed',`Processed ${d.processed} scheduled email(s)`,'gr');
-}
-async function startSequence(id){
-  try{await post('/api/sequences/start',{id});log('o-feed','Started follow-up sequence','gr');drawOut();}catch{log('o-feed','Failed to start sequence','er');}
-}
 function getLeadTracking(id){
   const recs=trackingData.filter(t=>t.leadId===id);
   const followUps=recs.filter(t=>t.type==='followup').length;
@@ -1523,19 +1396,6 @@ async function loadAnal(){
     if(cEl&&d.cities){
       cEl.innerHTML=Object.entries(d.cities).map(([city,c])=>`<div class="pr"><div class="pl">${city}</div><div class="pt"><div class="pf" style="width:${(c.total/max)*100}%"></div></div><div class="pn">${c.total}</div></div>`).join('')||'<div style="color:var(--t4);font-size:11px">No data</div>';
     }
-    const abEl=document.getElementById('a-ab');
-    if(abEl){
-      try{
-        const ab=await(await fetch('/api/outreach/ab-results')).json();
-        if(Object.keys(ab.tests).length){
-          abEl.innerHTML=Object.entries(ab.tests).map(([id,t])=>`<div style="margin-bottom:10px;padding:10px;background:var(--s2);border-radius:7px;border:1px solid var(--b1)">
-            <div style="font-size:10px;color:var(--t2);margin-bottom:4px">A: "${x(t.subjectA)}" — ${t.A.openRate}% opens</div>
-            <div style="font-size:10px;color:var(--t2);margin-bottom:4px">B: "${x(t.subjectB)}" — ${t.B.openRate}% opens</div>
-            <div style="font-size:11px;font-weight:800;color:var(--green)">Winner: ${t.winner}</div>
-          </div>`).join('');
-        } else { abEl.innerHTML='<div style="color:var(--t4);font-size:11px">No A/B tests yet</div>'; }
-      }catch{ abEl.innerHTML='<div style="color:var(--t4);font-size:11px">No A/B tests yet</div>'; }
-    }
   }catch{}
 }
 
@@ -1579,29 +1439,6 @@ async function saveNotes(){
     const l=leads.find(x=>x.id===notesLeadId);if(l)l.notes=notes;drawScout();
   }
   closeOv('notes-ov');notesLeadId=null;
-}
-
-// ── DM SCRIPTS ────────────────────────────────────────────────────────
-function openDM(id){
-  dmLeadId=id;const l=leads.find(x=>x.id===id);
-  document.getElementById('dm-name').textContent=l?.name||'';
-  document.getElementById('dm-results').innerHTML='';
-  document.getElementById('dm-loading').style.display='none';
-  document.getElementById('dm-ov').classList.add('on');
-}
-async function genDM(platform){
-  document.getElementById('dm-loading').style.display='block';
-  document.getElementById('dm-results').innerHTML='';
-  try{
-    const d=await(await fetch('/api/dm-script',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:dmLeadId,platform})})).json();
-    if(d.ok&&d.scripts){
-      document.getElementById('dm-results').innerHTML=d.scripts.map(s=>`<div class="ebox" style="margin-bottom:8px">
-        <div class="esubj">${x(s.label)}</div><div class="ebody">${x(s.text)}</div>
-        <button class="ab" style="margin-top:6px" onclick="navigator.clipboard.writeText(${JSON.stringify(s.text)}).then(()=>this.textContent='Copied ✓')">Copy</button>
-      </div>`).join('');
-    } else { document.getElementById('dm-results').innerHTML='<div style="color:var(--red)">Failed</div>'; }
-  }catch(e){ document.getElementById('dm-results').innerHTML=`<div style="color:var(--red)">${e.message}</div>`; }
-  document.getElementById('dm-loading').style.display='none';
 }
 
 // ── SCORING ───────────────────────────────────────────────────────────
