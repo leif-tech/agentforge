@@ -217,12 +217,14 @@ app.post('/api/emailfinder/find', async (req,res) => {
   try {
     emit(sessionId, { type:'emailfinder', status:'searching', message:`🔍 Searching email for ${lead.name}...` });
     const result = await findEmail(lead, p => emit(sessionId,{ type:'emailfinder',...p }));
+    if (lead.socials) { leads[index].socials=lead.socials; }
     if (result) {
       leads[index].foundEmail=result.email;
       leads[index].emailConfidence=result.confidence;
       save(LF,leads);
       emit(sessionId, { type:'emailfinder', status:'found', message:`✅ Found: ${result.email} (${result.confidence}% confidence)` });
     } else {
+      save(LF,leads);
       emit(sessionId, { type:'emailfinder', status:'not_found', message:`❌ No email found for ${lead.name}` });
     }
     emit(sessionId, { type:'emailfinder_done', leadId:id, email:result?.email||null, confidence:result?.confidence||null });
@@ -242,6 +244,7 @@ app.post('/api/emailfinder/find-batch', async (req,res) => {
     try {
       emit(sessionId, { type:'emailfinder', status:'searching', message:`[${i+1}/${ids.length}] Searching: ${lead.name}` });
       const result = await findEmail(lead, p => emit(sessionId,{ type:'emailfinder',...p }));
+      if (lead.socials) { leads[index].socials=lead.socials; }
       if (result) {
         leads[index].foundEmail=result.email;
         leads[index].emailConfidence=result.confidence;
@@ -249,6 +252,7 @@ app.post('/api/emailfinder/find-batch', async (req,res) => {
         save(LF,leads);
         emit(sessionId, { type:'emailfinder', status:'found', message:`✅ [${i+1}/${ids.length}] ${lead.name} → ${result.email}` });
       } else {
+        save(LF,leads);
         emit(sessionId, { type:'emailfinder', status:'not_found', message:`❌ [${i+1}/${ids.length}] No email for ${lead.name}` });
       }
       emit(sessionId, { type:'emailfinder_done', leadId:ids[i], email:result?.email||null });

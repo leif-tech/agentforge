@@ -1,6 +1,7 @@
 const axios = require('axios');
 const https = require('https');
 const http = require('http');
+const { findSocialMedia } = require('./socialfinder');
 const HUNTER = 'https://api.hunter.io/v2';
 
 // Fetch a URL and return raw HTML (follows redirects, timeout 10s)
@@ -109,6 +110,16 @@ async function findEmailFromHunter(lead, onProgress) {
 
 async function findEmail(lead, onProgress) {
   onProgress && onProgress({ status:'searching', message:`🔎 Finding email for ${lead.name}...` });
+
+  // Step 0: Auto-find socials if not already done
+  if (!lead.socials || !lead.socials.searchedAt) {
+    onProgress && onProgress({ status:'searching', message:`📱 Finding social profiles first...` });
+    try {
+      lead.socials = await findSocialMedia(lead, onProgress);
+    } catch(e) {
+      onProgress && onProgress({ status:'error', message:`⚠ Social search failed: ${e.message}` });
+    }
+  }
 
   // Step 1: Try Facebook page first (most emails come from here)
   const fb = await findEmailFromFacebook(lead, onProgress);
