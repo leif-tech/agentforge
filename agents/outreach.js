@@ -16,7 +16,9 @@ function parseJSON(text) {
 function cleanCopy(obj) {
   if (!obj) return obj;
   for (const key of Object.keys(obj)) {
-    if (typeof obj[key] === 'string') obj[key] = obj[key].replace(/—/g, '-');
+    if (typeof obj[key] === 'string') {
+      obj[key] = obj[key].replace(/\s*—\s*/g, ', ').replace(/,,/g, ',');
+    }
   }
   return obj;
 }
@@ -53,18 +55,18 @@ Email structure:
 2. Leif introduces himself as the founder of WebForge — not "I work with WebForge" or "I'm part of WebForge". He started it. Use natural phrasing like "I'm Leif — I started WebForge" or "I run WebForge". Then one sentence on what WebForge does with AI for local businesses. Personal, not a company pitch.
 3. Tell them about the demo site — include the actual URL ${previewUrl} so they can click it. Be clear: this is just a demo to show what is possible. The real site they get will be fully built around what they actually want — their style, colors, feel, everything. It can look completely different. The demo is just a taste.
 4. List the 5 free things clearly so the value feels undeniable.
-5. The exchange — honest and direct: everything is free, and all Leif asks in return is one quick 15-minute call. Fair trade. No-brainer.
+5. The exchange — honest and direct: everything is free, and all Leif asks in return is a quick 5-10 minute call just to hear what they are currently struggling with in their business. That is it. Or if they prefer, they can just reply to this email and share what challenges they are facing. Either way works. Make this feel effortless.
 6. One line about everything else WebForge can handle with AI if they want to scale — make it feel like there is a lot more available.
 7. Sign off as Leif, WebForge — personal, confident, not corporate.
 
-The goal of this email is to make saying NO feel stupid. The offer must be so obviously one-sided in their favor that ignoring it would feel like leaving real money and real value on the table for no reason. The ask is tiny — 15 minutes — and the value being handed over is massive and already done. That contrast must land hard.
+The goal of this email is to make saying NO feel stupid. The offer must be so obviously one-sided in their favor that ignoring it would feel like leaving real money and real value on the table for no reason. The ask is tiny, just 5-10 minutes or even just a reply email, and the value being handed over is massive and already done. That contrast must land hard.
 
 Rules:
 - Sound like a real founder who genuinely did the work before asking for anything
 - Leif must introduce himself as the person who runs/founded WebForge — never as someone who works there
 - The tone is confident and generous — not desperate, not salesy, not begging
 - Make the value feel undeniable — a real website is already live, real deliverables are ready, and it costs them nothing
-- The ask (15-minute call) must feel laughably small compared to what they are getting
+- The ask (5-10 minute call or just replying to the email) must feel laughably small compared to what they are getting
 - The reader should finish the email thinking "why would I say no to this"
 - Create a subtle sense that this offer will not sit around forever — Leif is busy, this is a specific offer for them
 - The demo URL must be visible and clickable in the body
@@ -75,7 +77,7 @@ Rules:
 - No corporate language or buzzwords
 - Subject line: short (under 9 words), sounds like a real person texting not a marketer emailing, creates a "wait, what?" reaction — ideally references something they built or did for this specific business. Examples of the right tone: "I built something for you", "took a look at your place", "made this for [Business Name]", "had an idea about [Business Name]". Never use exclamation marks, never sound like a newsletter, never use words like "partnership", "opportunity", "grow", or "free"
 - Sign off: Leif, WebForge
-- NEVER use em dashes (—) anywhere in the subject or body. Use commas, periods, or dashes (-) instead.
+- NEVER use em dashes (—) anywhere in the subject or body. Use commas instead where an em dash would go. This is critical.
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
@@ -248,7 +250,7 @@ Rules:
 - No corporate language
 - Subject line: short, casual, different from the original
 - Sign off: Leif
-- NEVER use em dashes (—) anywhere. Use commas, periods, or dashes (-) instead.
+- NEVER use em dashes (—) anywhere. Use commas instead where an em dash would go. This is critical.
 
 Return ONLY valid JSON: {"subject":"...","body":"..."}`
     }]
