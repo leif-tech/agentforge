@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-// Load .env from leads dir (persisted volume) first, then fallback to local
+const { randomUUID } = require('crypto');
 const leadsEnv = path.join(__dirname, 'leads', '.env');
 const localEnv = path.join(__dirname, '.env');
 require('dotenv').config({ path: fs.existsSync(leadsEnv) ? leadsEnv : localEnv });
@@ -11,9 +11,10 @@ const session = require('express-session');
 const { runScout }              = require('./agents/scout');
 const { buildDemoSite }         = require('./agents/builder');
 const { deployDemoSite: cfDeploy, isConfigured: cfConfigured } = require('./agents/cloudflare');
-const { sendOutreach, generateEmailPreview } = require('./agents/outreach');
+const { sendOutreach, generateEmailPreview, generateFollowUpEmail, generateDMScript, generateABSubjects } = require('./agents/outreach');
 const { handleReply }           = require('./agents/closer');
 const { findEmail, checkCredits } = require('./agents/emailfinder');
+const { findSocialMedia }       = require('./agents/socialfinder');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +27,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'agentforge-secret-key',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
@@ -88,12 +89,74 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-function requireAuth(req, res, next) {
-  if (req.session.auth) return next();
-  res.redirect('/login');
+// ── DATA ──────────────────────────────────────────────────────────────────
+const DATA = path.join(__dirname,'leads');
+fs.mkdirSync(DATA,{recursive:true});
+const LF = path.join(DATA,'leads.json');
+const OF = path.join(DATA,'outreach.json');
+const RF = path.join(DATA,'replies.json');
+const SEQ_F = path.join(DATA,'sequences.json');
+const SCH_F = path.join(DATA,'scheduled.json');
+const TF = path.join(DATA,'tracking.json');
+const load = f => { try { return fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):[] } catch { return [] } };
+const save = (f,d) => fs.writeFileSync(f,JSON.stringify(d,null,2));
+let leads = load(LF), outreach = load(OF), replies = load(RF);
+let sequences = load(SEQ_F), scheduled = load(SCH_F), tracking = load(TF);
+
+// ── MIGRATION ────────────────────────────────────────────────────────────
+let migrated = false;
+leads.forEach(l => {
+  if (!l.id) { l.id = randomUUID(); migrated = true; }
+  if (l.previewUrl && l.previewUrl.includes('ngrok') && l.siteFile) {
+    l.previewUrl = `http://localhost:${PORT}/sites/${l.siteFile}`;
+    migrated = true;
+  }
+});
+if (migrated) save(LF, leads);
+
+// Migrate outreach: leadIndex → leadId
+let oMig = false;
+outreach.forEach(o => {
+  if (o.leadIndex !== undefined && !o.leadId) {
+    const lead = leads[o.leadIndex];
+    if (lead) { o.leadId = lead.id; oMig = true; }
+  }
+});
+if (oMig) save(OF, outreach);
+
+let rMig = false;
+replies.forEach(r => {
+  if (r.leadIndex !== undefined && !r.leadId) {
+    const lead = leads[r.leadIndex];
+    if (lead) { r.leadId = lead.id; rMig = true; }
+  }
+});
+if (rMig) save(RF, replies);
+
+// ── HELPERS ──────────────────────────────────────────────────────────────
+function findLead(id) {
+  const index = leads.findIndex(l => l.id === id);
+  return index >= 0 ? { lead: leads[index], index } : null;
 }
 
-// Protect all routes except /login and /logout
+// ── TRACKING ROUTES (before auth — email clients need access) ────────────
+const PIXEL_BUF = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+
+app.get('/t/:trackingId.png', (req, res) => {
+  const rec = tracking.find(t => t.trackingId === req.params.trackingId);
+  if (rec) { rec.opens.push({ at: new Date().toISOString() }); save(TF, tracking); }
+  res.set('Content-Type', 'image/png');
+  res.set('Cache-Control', 'no-store, no-cache');
+  res.send(PIXEL_BUF);
+});
+
+app.get('/c/:trackingId', (req, res) => {
+  const rec = tracking.find(t => t.trackingId === req.params.trackingId);
+  if (rec) { rec.clicks.push({ at: new Date().toISOString() }); save(TF, tracking); }
+  res.redirect(rec?.targetUrl || '/');
+});
+
+// ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
 app.use((req, res, next) => {
   if (req.path === '/login' || req.path === '/logout') return next();
   if (req.session.auth) return next();
@@ -110,27 +173,6 @@ app.use(express.static(path.join(__dirname,'public'), {
 const SITES_DIR = path.join(__dirname,'sites');
 fs.mkdirSync(SITES_DIR,{recursive:true});
 app.use('/sites', express.static(SITES_DIR));
-
-// ── DATA ──────────────────────────────────────────────────────────────────
-const DATA = path.join(__dirname,'leads');
-fs.mkdirSync(DATA,{recursive:true});
-const LF = path.join(DATA,'leads.json');
-const OF = path.join(DATA,'outreach.json');
-const RF = path.join(DATA,'replies.json');
-const load = f => { try { return fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):[] } catch { return [] } };
-const save = (f,d) => fs.writeFileSync(f,JSON.stringify(d,null,2));
-let leads = load(LF), outreach = load(OF), replies = load(RF);
-
-// Migrate any stale ngrok previewUrls to local paths
-let migrated = false;
-leads = leads.map(l => {
-  if (l.previewUrl && l.previewUrl.includes('ngrok') && l.siteFile) {
-    migrated = true;
-    return { ...l, previewUrl: `http://localhost:${PORT}/sites/${l.siteFile}` };
-  }
-  return l;
-});
-if (migrated) save(LF, leads);
 
 // ── SSE ───────────────────────────────────────────────────────────────────
 const sessions = {};
@@ -156,6 +198,7 @@ app.post('/api/scout/run', async (req,res) => {
       emit(sessionId, { type:'scout', ...p });
       if (p.lead) {
         if (!leads.find(l=>l.name===p.lead.name&&l.address===p.lead.address)) {
+          p.lead.id = randomUUID();
           leads.push(p.lead); save(LF,leads);
         }
       }
@@ -166,55 +209,56 @@ app.post('/api/scout/run', async (req,res) => {
 
 // ── EMAIL FINDER ──────────────────────────────────────────────────────────
 app.post('/api/emailfinder/find', async (req,res) => {
-  const { leadIndex, sessionId } = req.body;
-  const lead = leads[leadIndex];
-  if (!lead) return res.status(404).json({ error:'Lead not found' });
+  const { id, sessionId } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  const { lead, index } = f;
   res.json({ status:'started' });
   try {
     emit(sessionId, { type:'emailfinder', status:'searching', message:`🔍 Searching email for ${lead.name}...` });
     const result = await findEmail(lead, p => emit(sessionId,{ type:'emailfinder',...p }));
     if (result) {
-      leads[leadIndex].foundEmail=result.email;
-      leads[leadIndex].emailConfidence=result.confidence;
+      leads[index].foundEmail=result.email;
+      leads[index].emailConfidence=result.confidence;
       save(LF,leads);
       emit(sessionId, { type:'emailfinder', status:'found', message:`✅ Found: ${result.email} (${result.confidence}% confidence)` });
     } else {
       emit(sessionId, { type:'emailfinder', status:'not_found', message:`❌ No email found for ${lead.name}` });
     }
-    emit(sessionId, { type:'emailfinder_done', leadIndex, email:result?.email||null, confidence:result?.confidence||null });
+    emit(sessionId, { type:'emailfinder_done', leadId:id, email:result?.email||null, confidence:result?.confidence||null });
   } catch(e) { emit(sessionId, { type:'error', agent:'emailfinder', message:e.message }); }
 });
 
 app.post('/api/emailfinder/find-batch', async (req,res) => {
-  const { leadIndices, sessionId } = req.body;
-  if (!leadIndices?.length) return res.status(400).json({ error:'No leads' });
+  const { ids, sessionId } = req.body;
+  if (!ids?.length) return res.status(400).json({ error:'No leads' });
   res.json({ status:'started' });
   let found = 0;
-  emit(sessionId, { type:'emailfinder', status:'start', message:`🚀 Starting batch search for ${leadIndices.length} leads...` });
-  for (let i = 0; i < leadIndices.length; i++) {
-    const idx = leadIndices[i];
-    const lead = leads[idx];
-    if (!lead) continue;
+  emit(sessionId, { type:'emailfinder', status:'start', message:`🚀 Starting batch search for ${ids.length} leads...` });
+  for (let i = 0; i < ids.length; i++) {
+    const f = findLead(ids[i]);
+    if (!f) continue;
+    const { lead, index } = f;
     try {
-      emit(sessionId, { type:'emailfinder', status:'searching', message:`[${i+1}/${leadIndices.length}] Searching: ${lead.name}` });
+      emit(sessionId, { type:'emailfinder', status:'searching', message:`[${i+1}/${ids.length}] Searching: ${lead.name}` });
       const result = await findEmail(lead, p => emit(sessionId,{ type:'emailfinder',...p }));
       if (result) {
-        leads[idx].foundEmail=result.email;
-        leads[idx].emailConfidence=result.confidence;
+        leads[index].foundEmail=result.email;
+        leads[index].emailConfidence=result.confidence;
         found++;
         save(LF,leads);
-        emit(sessionId, { type:'emailfinder', status:'found', message:`✅ [${i+1}/${leadIndices.length}] ${lead.name} → ${result.email}` });
+        emit(sessionId, { type:'emailfinder', status:'found', message:`✅ [${i+1}/${ids.length}] ${lead.name} → ${result.email}` });
       } else {
-        emit(sessionId, { type:'emailfinder', status:'not_found', message:`❌ [${i+1}/${leadIndices.length}] No email for ${lead.name}` });
+        emit(sessionId, { type:'emailfinder', status:'not_found', message:`❌ [${i+1}/${ids.length}] No email for ${lead.name}` });
       }
-      emit(sessionId, { type:'emailfinder_done', leadIndex:idx, email:result?.email||null });
+      emit(sessionId, { type:'emailfinder_done', leadId:ids[i], email:result?.email||null });
     } catch(e) {
       emit(sessionId, { type:'emailfinder', status:'error', message:`⚠ ${lead.name}: ${e.message}` });
     }
     await new Promise(r=>setTimeout(r,600));
   }
-  emit(sessionId, { type:'emailfinder_batch_done', found, total:leadIndices.length });
-  emit(sessionId, { type:'emailfinder', status:'complete', message:`🏁 Done — ${found}/${leadIndices.length} emails found` });
+  emit(sessionId, { type:'emailfinder_batch_done', found, total:ids.length });
+  emit(sessionId, { type:'emailfinder', status:'complete', message:`🏁 Done — ${found}/${ids.length} emails found` });
 });
 
 app.get('/api/emailfinder/credits', async (req,res) => {
@@ -224,9 +268,10 @@ app.get('/api/emailfinder/credits', async (req,res) => {
 
 // ── BUILDER ───────────────────────────────────────────────────────────────
 app.post('/api/builder/build', async (req,res) => {
-  const { leadIndex, sessionId } = req.body;
-  const lead = leads[leadIndex];
-  if (!lead) return res.status(404).json({ error:'Lead not found' });
+  const { id, sessionId } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  const { lead, index } = f;
   res.json({ status:'started' });
   emit(sessionId, { type:'builder', status:'start', message:`🚀 Starting build for ${lead.name}...` });
   try {
@@ -239,10 +284,10 @@ app.post('/api/builder/build', async (req,res) => {
         emit(sessionId, { type:'builder', status:'warn', message:`⚠️  Cloudflare deploy failed: ${cfErr.message} — using local URL` });
       }
     }
-    leads[leadIndex] = { ...leads[leadIndex], siteFile:filename, previewUrl, status:'Site Built' };
+    leads[index] = { ...leads[index], siteFile:filename, previewUrl, status:'Site Built' };
     save(LF,leads);
     emit(sessionId, { type:'builder', status:'done', message:`✅ ${lead.name} — site live! ${previewUrl}` });
-    emit(sessionId, { type:'builder_done', leadIndex, filename, previewUrl });
+    emit(sessionId, { type:'builder_done', leadId:id, filename, previewUrl });
   } catch(e) {
     emit(sessionId, { type:'builder', status:'error', message:`❌ Failed: ${e.message}` });
     emit(sessionId, { type:'error', agent:'builder', message:e.message });
@@ -250,16 +295,16 @@ app.post('/api/builder/build', async (req,res) => {
 });
 
 app.post('/api/builder/build-batch', async (req,res) => {
-  const { leadIndices, sessionId } = req.body;
-  if (!leadIndices?.length) return res.status(400).json({ error:'No leads' });
+  const { ids, sessionId } = req.body;
+  if (!ids?.length) return res.status(400).json({ error:'No leads' });
   res.json({ status:'started' });
-  emit(sessionId, { type:'builder', status:'start', message:`🚀 Building ${leadIndices.length} site(s)...` });
+  emit(sessionId, { type:'builder', status:'start', message:`🚀 Building ${ids.length} site(s)...` });
   let built = 0;
-  for (let i = 0; i < leadIndices.length; i++) {
-    const idx = leadIndices[i];
-    const lead = leads[idx];
-    if (!lead) continue;
-    emit(sessionId, { type:'builder', status:'building', message:`[${i+1}/${leadIndices.length}] Building: ${lead.name}...` });
+  for (let i = 0; i < ids.length; i++) {
+    const f = findLead(ids[i]);
+    if (!f) continue;
+    const { lead, index } = f;
+    emit(sessionId, { type:'builder', status:'building', message:`[${i+1}/${ids.length}] Building: ${lead.name}...` });
     try {
       const { filename, html } = await buildDemoSite(lead, p => emit(sessionId,{ type:'builder',...p }));
       let previewUrl = `${getBase()}/sites/${filename}`;
@@ -270,73 +315,263 @@ app.post('/api/builder/build-batch', async (req,res) => {
           emit(sessionId, { type:'builder', status:'warn', message:`⚠️  Cloudflare deploy failed: ${cfErr.message} — using local URL` });
         }
       }
-      leads[idx] = { ...leads[idx], siteFile:filename, previewUrl, status:'Site Built' };
+      leads[index] = { ...leads[index], siteFile:filename, previewUrl, status:'Site Built' };
       save(LF,leads);
       built++;
-      emit(sessionId, { type:'builder', status:'done', message:`✅ [${built}/${leadIndices.length}] ${lead.name} live!` });
-      emit(sessionId, { type:'builder_done', leadIndex:idx, filename, previewUrl });
+      emit(sessionId, { type:'builder', status:'done', message:`✅ [${built}/${ids.length}] ${lead.name} live!` });
+      emit(sessionId, { type:'builder_done', leadId:ids[i], filename, previewUrl });
     } catch(e) {
       emit(sessionId, { type:'builder', status:'error', message:`❌ ${lead.name}: ${e.message}` });
     }
     await new Promise(r=>setTimeout(r,800));
   }
-  emit(sessionId, { type:'builder_batch_done', built, total:leadIndices.length });
-  emit(sessionId, { type:'builder', status:'complete', message:`🏁 Done — ${built}/${leadIndices.length} sites built` });
+  emit(sessionId, { type:'builder_batch_done', built, total:ids.length });
+  emit(sessionId, { type:'builder', status:'complete', message:`🏁 Done — ${built}/${ids.length} sites built` });
 });
 
 // ── OUTREACH ──────────────────────────────────────────────────────────────
 app.post('/api/outreach/preview', async (req,res) => {
-  const { leadIndex } = req.body;
-  const lead = leads[leadIndex];
-  if (!lead) return res.status(404).json({ error:'Lead not found' });
+  const { id } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
   try {
-    const copy = await generateEmailPreview(lead, lead.previewUrl||getBase());
+    const copy = await generateEmailPreview(f.lead, f.lead.previewUrl||getBase());
     res.json({ ok:true, copy });
   } catch(e) { res.status(500).json({ error:e.message }); }
 });
 
 app.post('/api/outreach/send', async (req,res) => {
-  const { leadIndex, emailAddress, sessionId, subject, body } = req.body;
-  const lead = leads[leadIndex];
-  if (!lead) return res.status(404).json({ error:'Lead not found' });
+  const { id, emailAddress, sessionId, subject, body } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  const { lead, index } = f;
   if (!emailAddress) return res.status(400).json({ error:'Email required' });
-  if (outreach.find(o=>o.leadIndex===leadIndex&&o.sentTo===emailAddress))
+  if (outreach.find(o=>o.leadId===id&&o.sentTo===emailAddress))
     return res.status(400).json({ error:'Already sent to this address for this lead.' });
   res.json({ status:'started' });
   emit(sessionId, { type:'outreach', status:'start', message:`📧 Preparing email for ${lead.name}...` });
   try {
-    const result = await sendOutreach(lead, lead.previewUrl||getBase(), emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body);
-    outreach.push({ leadIndex, lead:lead.name, ...result });
+    // Create tracking record
+    const trackingId = randomUUID();
+    const previewUrl = lead.previewUrl||getBase();
+    const trackRec = { trackingId, leadId:id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() };
+    tracking.push(trackRec); save(TF, tracking);
+    const trackingOpts = {
+      pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
+      clickUrl: `${getBase()}/c/${trackingId}`
+    };
+
+    const result = await sendOutreach(lead, previewUrl, emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body, trackingOpts);
+    outreach.push({ leadId:id, lead:lead.name, ...result });
     save(OF,outreach);
-    leads[leadIndex].status='Outreach Sent';
-    leads[leadIndex].outreachEmail=emailAddress;
-    leads[leadIndex].outreachSentAt=result.sentAt;
+    leads[index].status='Outreach Sent';
+    leads[index].outreachEmail=emailAddress;
+    leads[index].outreachSentAt=result.sentAt;
     save(LF,leads);
     emit(sessionId, { type:'outreach', status:'sent', message:`✅ Email sent to ${emailAddress}!` });
-    emit(sessionId, { type:'outreach_done', leadIndex, result });
+    emit(sessionId, { type:'outreach_done', leadId:id, result });
   } catch(e) {
     emit(sessionId, { type:'outreach', status:'error', message:`❌ Failed: ${e.message}` });
     emit(sessionId, { type:'error', agent:'outreach', message:e.message });
   }
 });
 
+// ── BATCH OUTREACH ────────────────────────────────────────────────────────
+app.post('/api/outreach/batch', async (req,res) => {
+  const { ids, sessionId } = req.body;
+  const targets = (ids && ids.length ? ids : leads.map(l=>l.id))
+    .map(id => findLead(id))
+    .filter(f => f && f.lead.foundEmail && !outreach.find(o=>o.leadId===f.lead.id&&o.sentTo===f.lead.foundEmail));
+  if (!targets.length) return res.status(400).json({ error:'No eligible leads (need email, not already sent)' });
+  res.json({ status:'started', count:targets.length });
+  emit(sessionId, { type:'outreach_batch', status:'start', message:`🚀 Batch sending to ${targets.length} leads...` });
+  let sent = 0, failed = 0;
+  for (let i = 0; i < targets.length; i++) {
+    const { lead, index } = targets[i];
+    const email = lead.foundEmail;
+    emit(sessionId, { type:'outreach_batch', status:'sending', message:`[${i+1}/${targets.length}] Sending to ${lead.name} (${email})...`, progress: Math.round((i/targets.length)*100) });
+    try {
+      const trackingId = randomUUID();
+      const previewUrl = lead.previewUrl||getBase();
+      tracking.push({ trackingId, leadId:lead.id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
+      save(TF, tracking);
+      const trackingOpts = {
+        pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
+        clickUrl: `${getBase()}/c/${trackingId}`
+      };
+      const result = await sendOutreach(lead, previewUrl, email, () => {}, null, null, trackingOpts);
+      outreach.push({ leadId:lead.id, lead:lead.name, ...result });
+      save(OF, outreach);
+      leads[index].status='Outreach Sent';
+      leads[index].outreachEmail=email;
+      leads[index].outreachSentAt=result.sentAt;
+      save(LF, leads);
+      sent++;
+      emit(sessionId, { type:'outreach_batch', status:'sent', message:`✅ [${sent}/${targets.length}] ${lead.name} → ${email}` });
+    } catch(e) {
+      failed++;
+      emit(sessionId, { type:'outreach_batch', status:'error', message:`❌ ${lead.name}: ${e.message}` });
+    }
+    // Random delay 3-8 seconds
+    const delay = 3000 + Math.random() * 5000;
+    await new Promise(r=>setTimeout(r,delay));
+  }
+  emit(sessionId, { type:'outreach_batch_done', sent, failed, total:targets.length });
+  emit(sessionId, { type:'outreach_batch', status:'complete', message:`🏁 Batch done — ${sent} sent, ${failed} failed` });
+});
+
+// ── SEND SCHEDULING ───────────────────────────────────────────────────────
+app.post('/api/outreach/schedule', (req,res) => {
+  const { id, emailAddress, subject, body, sendAt } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  if (!emailAddress || !sendAt) return res.status(400).json({ error:'Email and sendAt required' });
+  const rec = { id:randomUUID(), leadId:id, emailAddress, subject:subject||'', body:body||'', sendAt, status:'pending', createdAt:new Date().toISOString() };
+  scheduled.push(rec); save(SCH_F, scheduled);
+  res.json({ ok:true, scheduled:rec });
+});
+
+app.get('/api/scheduled', (req,res) => {
+  const enriched = scheduled.map(s => {
+    const f = findLead(s.leadId);
+    return { ...s, leadName: f?.lead?.name || 'Unknown' };
+  });
+  res.json({ scheduled:enriched });
+});
+
+app.post('/api/scheduled/process', async (req,res) => {
+  const { sessionId } = req.body;
+  const now = new Date().toISOString();
+  const due = scheduled.filter(s => s.status === 'pending' && s.sendAt <= now);
+  if (!due.length) return res.json({ processed:0 });
+  let sent = 0;
+  for (const s of due) {
+    const f = findLead(s.leadId);
+    if (!f) { s.status='cancelled'; continue; }
+    try {
+      const trackingId = randomUUID();
+      const previewUrl = f.lead.previewUrl||getBase();
+      tracking.push({ trackingId, leadId:s.leadId, type:'scheduled', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
+      save(TF, tracking);
+      const trackingOpts = {
+        pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
+        clickUrl: `${getBase()}/c/${trackingId}`
+      };
+      const result = await sendOutreach(f.lead, previewUrl, s.emailAddress, ()=>{}, s.subject||null, s.body||null, trackingOpts);
+      outreach.push({ leadId:s.leadId, lead:f.lead.name, ...result });
+      save(OF, outreach);
+      leads[f.index].status='Outreach Sent';
+      leads[f.index].outreachEmail=s.emailAddress;
+      leads[f.index].outreachSentAt=result.sentAt;
+      save(LF, leads);
+      s.status='sent'; s.sentAt=result.sentAt;
+      sent++;
+      emit(sessionId, { type:'scheduled_sent', leadId:s.leadId, message:`✅ Scheduled email sent to ${s.emailAddress}` });
+    } catch(e) {
+      s.status='failed'; s.error=e.message;
+      emit(sessionId, { type:'scheduled_error', leadId:s.leadId, message:`❌ ${e.message}` });
+    }
+  }
+  save(SCH_F, scheduled);
+  res.json({ processed:sent });
+});
+
+app.delete('/api/scheduled/:id', (req,res) => {
+  const idx = scheduled.findIndex(s => s.id === req.params.id);
+  if (idx >= 0) { scheduled[idx].status='cancelled'; save(SCH_F, scheduled); }
+  res.json({ ok:true });
+});
+
+// ── FOLLOW-UP SEQUENCES ──────────────────────────────────────────────────
+app.post('/api/sequences/start', (req,res) => {
+  const { id } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  if (sequences.find(s => s.leadId===id && s.status==='active'))
+    return res.status(400).json({ error:'Sequence already active for this lead' });
+  const now = new Date();
+  const seq = {
+    id: randomUUID(), leadId: id, status: 'active', createdAt: now.toISOString(),
+    steps: [
+      { step:1, sendAt: new Date(now.getTime()+3*86400000).toISOString(), status:'pending', sentAt:null },
+      { step:2, sendAt: new Date(now.getTime()+7*86400000).toISOString(), status:'pending', sentAt:null },
+      { step:3, sendAt: new Date(now.getTime()+14*86400000).toISOString(), status:'pending', sentAt:null },
+    ]
+  };
+  sequences.push(seq); save(SEQ_F, sequences);
+  res.json({ ok:true, sequence:seq });
+});
+
+app.get('/api/sequences', (req,res) => {
+  const enriched = sequences.map(s => {
+    const f = findLead(s.leadId);
+    return { ...s, leadName: f?.lead?.name || 'Unknown' };
+  });
+  res.json({ sequences:enriched });
+});
+
+app.post('/api/sequences/process', async (req,res) => {
+  const { sessionId } = req.body;
+  const now = new Date().toISOString();
+  let sent = 0;
+  for (const seq of sequences) {
+    if (seq.status !== 'active') continue;
+    // Check if lead has replied — auto-cancel
+    const hasReply = replies.find(r => r.leadId === seq.leadId);
+    if (hasReply) { seq.status = 'cancelled'; continue; }
+    const f = findLead(seq.leadId);
+    if (!f) { seq.status = 'cancelled'; continue; }
+    for (const step of seq.steps) {
+      if (step.status !== 'pending' || step.sendAt > now) continue;
+      try {
+        const emailAddr = f.lead.outreachEmail || f.lead.foundEmail;
+        if (!emailAddr) { step.status='skipped'; continue; }
+        const prevOutreach = outreach.find(o => o.leadId === seq.leadId);
+        const followUp = await generateFollowUpEmail(f.lead, step.step, prevOutreach?.subject || 'Your demo website');
+        const trackingId = randomUUID();
+        const previewUrl = f.lead.previewUrl||getBase();
+        tracking.push({ trackingId, leadId:seq.leadId, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
+        const trackingOpts = {
+          pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
+          clickUrl: `${getBase()}/c/${trackingId}`
+        };
+        await sendOutreach(f.lead, previewUrl, emailAddr, ()=>{}, followUp.subject, followUp.body, trackingOpts);
+        step.status='sent'; step.sentAt=new Date().toISOString();
+        sent++;
+        emit(sessionId, { type:'sequence_sent', leadId:seq.leadId, step:step.step, message:`✅ Follow-up ${step.step}/3 sent to ${f.lead.name}` });
+      } catch(e) {
+        step.status='failed'; step.error=e.message;
+        emit(sessionId, { type:'sequence_error', leadId:seq.leadId, message:`❌ Follow-up failed: ${e.message}` });
+      }
+    }
+    if (seq.steps.every(s => s.status !== 'pending')) seq.status = 'completed';
+  }
+  save(SEQ_F, sequences);
+  save(TF, tracking);
+  res.json({ processed:sent });
+});
+
 // ── CLOSER ────────────────────────────────────────────────────────────────
 app.post('/api/closer/handle', async (req,res) => {
-  const { leadIndex, replyText, sessionId } = req.body;
-  const lead = leads[leadIndex];
-  if (!lead) return res.status(404).json({ error:'Lead not found' });
+  const { id, replyText, sessionId } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  const { lead, index } = f;
   res.json({ status:'started' });
   emit(sessionId, { type:'closer', status:'start', message:`🧠 Analyzing reply from ${lead.name}...` });
-  const orig = outreach.find(o=>o.leadIndex===leadIndex) || { subject:'Your free demo website' };
+  const orig = outreach.find(o=>o.leadId===id) || { subject:'Your free demo website' };
   try {
     const response = await handleReply(lead, orig, replyText, p => emit(sessionId,{ type:'closer',...p }));
-    replies.push({ leadIndex, lead:lead.name, replyText, response, at:new Date().toISOString() });
+    replies.push({ leadId:id, lead:lead.name, replyText, response, at:new Date().toISOString() });
     save(RF,replies);
-    leads[leadIndex].status=response.sentiment==='positive'?'Hot Lead 🔥':'Replied';
-    leads[leadIndex].lastReply=replyText;
+    leads[index].status=response.sentiment==='positive'?'Hot Lead 🔥':'Replied';
+    leads[index].lastReply=replyText;
     save(LF,leads);
+    // Auto-cancel any active sequence for this lead
+    sequences.forEach(s => { if (s.leadId===id && s.status==='active') s.status='cancelled'; });
+    save(SEQ_F, sequences);
     emit(sessionId, { type:'closer', status:'done', message:`✅ Response ready — ${response.objectionType} (${response.sentiment})` });
-    emit(sessionId, { type:'closer_done', leadIndex, response });
+    emit(sessionId, { type:'closer_done', leadId:id, response });
   } catch(e) {
     emit(sessionId, { type:'closer', status:'error', message:`❌ Failed: ${e.message}` });
     emit(sessionId, { type:'error', agent:'closer', message:e.message });
@@ -345,26 +580,254 @@ app.post('/api/closer/handle', async (req,res) => {
 
 // ── LEADS ─────────────────────────────────────────────────────────────────
 app.get('/api/leads', (req,res) => res.json({ leads, total:leads.length }));
-app.delete('/api/leads/:i', (req,res) => {
-  const i=parseInt(req.params.i);
-  if(i>=0&&i<leads.length){leads.splice(i,1);save(LF,leads);}
-  res.json({ok:true});
+
+app.delete('/api/leads/:id', (req,res) => {
+  const idx = leads.findIndex(l => l.id === req.params.id);
+  if (idx >= 0) { leads.splice(idx,1); save(LF,leads); }
+  res.json({ ok:true });
 });
+
 app.delete('/api/leads', (req,res) => { leads=[];save(LF,leads);res.json({ok:true}); });
+
 app.post('/api/leads/delete-batch', (req,res) => {
-  const { indices } = req.body;
-  if (!Array.isArray(indices) || !indices.length) return res.status(400).json({ error:'No indices' });
-  const sorted = [...new Set(indices)].map(Number).filter(i=>i>=0&&i<leads.length).sort((a,b)=>b-a);
-  sorted.forEach(i => leads.splice(i,1));
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error:'No ids' });
+  const before = leads.length;
+  leads = leads.filter(l => !ids.includes(l.id));
   save(LF,leads);
-  res.json({ ok:true, removed:sorted.length, remaining:leads.length });
+  res.json({ ok:true, removed:before-leads.length, remaining:leads.length });
 });
+
 app.get('/api/leads/export/csv', (req,res) => {
-  const h=['name','address','phone','rating','reviews','type','location','status','foundEmail','emailConfidence','previewUrl','outreachEmail','found_at'];
+  const h=['name','address','phone','rating','reviews','type','location','status','foundEmail','emailConfidence','previewUrl','outreachEmail','found_at','score','notes'];
   const rows=leads.map(l=>h.map(k=>`"${(l[k]||'').toString().replace(/"/g,'""')}"`).join(','));
   res.setHeader('Content-Type','text/csv');
   res.setHeader('Content-Disposition','attachment; filename="agentforge-leads.csv"');
   res.send([h.join(','),...rows].join('\n'));
+});
+
+// ── CRM NOTES ─────────────────────────────────────────────────────────────
+app.post('/api/leads/:id/notes', (req,res) => {
+  const f = findLead(req.params.id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  leads[f.index].notes = req.body.notes || '';
+  save(LF, leads);
+  res.json({ ok:true });
+});
+
+// ── LEAD SCORING ──────────────────────────────────────────────────────────
+app.post('/api/leads/score', (req,res) => {
+  leads.forEach(l => {
+    let score = 0;
+    // Rating: 0-20pts (5.0 = 20pts)
+    if (l.rating && l.rating !== 'N/A') score += Math.min(20, Math.round((parseFloat(l.rating)/5)*20));
+    // Reviews: 0-20pts (100+ reviews = 20pts)
+    if (l.reviews && l.reviews !== 'N/A') score += Math.min(20, Math.round((parseInt(l.reviews)/100)*20));
+    // Has website/site built: 10pts
+    if (l.siteFile) score += 10;
+    // Has email: 15pts
+    if (l.foundEmail) score += 15;
+    // Email confidence: 0-15pts
+    if (l.emailConfidence) score += Math.round((l.emailConfidence/100)*15);
+    // Opened email: 10pts
+    const tr = tracking.find(t => t.leadId === l.id && t.opens.length > 0);
+    if (tr) score += 10;
+    // Clicked: 10pts
+    const tc = tracking.find(t => t.leadId === l.id && t.clicks.length > 0);
+    if (tc) score += 10;
+    l.score = Math.min(100, score);
+  });
+  save(LF, leads);
+  res.json({ ok:true, leads });
+});
+
+// ── DM SCRIPT GENERATOR ──────────────────────────────────────────────────
+app.post('/api/dm-script', async (req,res) => {
+  const { id, platform } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error:'Lead not found' });
+  try {
+    const scripts = await generateDMScript(f.lead, platform || 'instagram');
+    res.json({ ok:true, scripts });
+  } catch(e) { res.status(500).json({ error:e.message }); }
+});
+
+// ── A/B TESTING ───────────────────────────────────────────────────────────
+app.post('/api/outreach/ab-send', async (req,res) => {
+  const { ids, sessionId } = req.body;
+  const targets = (ids && ids.length ? ids : leads.map(l=>l.id))
+    .map(id => findLead(id))
+    .filter(f => f && f.lead.foundEmail && !outreach.find(o=>o.leadId===f.lead.id&&o.sentTo===f.lead.foundEmail));
+  if (targets.length < 2) return res.status(400).json({ error:'Need at least 2 eligible leads for A/B test' });
+  res.json({ status:'started', count:targets.length });
+  emit(sessionId, { type:'ab_test', status:'start', message:`🧪 A/B test with ${targets.length} leads...` });
+  try {
+    // Generate 2 subject variations for the first lead as template
+    const sampleLead = targets[0].lead;
+    const variants = await generateABSubjects(sampleLead, sampleLead.previewUrl||getBase());
+    const testId = randomUUID();
+    const half = Math.ceil(targets.length / 2);
+    let sent = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const { lead, index } = targets[i];
+      const variant = i < half ? 'A' : 'B';
+      const subjectLine = variant === 'A' ? variants.subjectA : variants.subjectB;
+      const email = lead.foundEmail;
+      emit(sessionId, { type:'ab_test', status:'sending', message:`[${i+1}/${targets.length}] (${variant}) ${lead.name}...`, progress: Math.round((i/targets.length)*100) });
+      try {
+        const trackingId = randomUUID();
+        const previewUrl = lead.previewUrl||getBase();
+        tracking.push({ trackingId, leadId:lead.id, type:'ab_test', opens:[], clicks:[], targetUrl:previewUrl, abVariant:variant, abTestId:testId, createdAt:new Date().toISOString() });
+        save(TF, tracking);
+        const trackingOpts = {
+          pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
+          clickUrl: `${getBase()}/c/${trackingId}`
+        };
+        const result = await sendOutreach(lead, previewUrl, email, ()=>{}, subjectLine, null, trackingOpts);
+        outreach.push({ leadId:lead.id, lead:lead.name, abTestId:testId, abVariant:variant, ...result });
+        save(OF, outreach);
+        leads[index].status='Outreach Sent';
+        leads[index].outreachEmail=email;
+        leads[index].outreachSentAt=result.sentAt;
+        save(LF, leads);
+        sent++;
+        emit(sessionId, { type:'ab_test', status:'sent', message:`✅ [${sent}/${targets.length}] (${variant}) ${lead.name}` });
+      } catch(e) {
+        emit(sessionId, { type:'ab_test', status:'error', message:`❌ ${lead.name}: ${e.message}` });
+      }
+      await new Promise(r=>setTimeout(r, 3000 + Math.random()*5000));
+    }
+    emit(sessionId, { type:'ab_test_done', testId, sent, total:targets.length, subjectA:variants.subjectA, subjectB:variants.subjectB });
+    emit(sessionId, { type:'ab_test', status:'complete', message:`🏁 A/B test done — ${sent} emails sent` });
+  } catch(e) {
+    emit(sessionId, { type:'ab_test', status:'error', message:`❌ ${e.message}` });
+  }
+});
+
+app.get('/api/outreach/ab-results', (req,res) => {
+  // Group by abTestId
+  const tests = {};
+  tracking.filter(t => t.abTestId).forEach(t => {
+    if (!tests[t.abTestId]) tests[t.abTestId] = { A: { sent:0, opens:0, clicks:0 }, B: { sent:0, opens:0, clicks:0 } };
+    const v = tests[t.abTestId][t.abVariant];
+    if (v) {
+      v.sent++;
+      if (t.opens.length) v.opens++;
+      if (t.clicks.length) v.clicks++;
+    }
+  });
+  // Get subject lines from outreach records
+  Object.keys(tests).forEach(testId => {
+    const oA = outreach.find(o => o.abTestId === testId && o.abVariant === 'A');
+    const oB = outreach.find(o => o.abTestId === testId && o.abVariant === 'B');
+    tests[testId].subjectA = oA?.subject || '';
+    tests[testId].subjectB = oB?.subject || '';
+    tests[testId].A.openRate = tests[testId].A.sent ? Math.round((tests[testId].A.opens/tests[testId].A.sent)*100) : 0;
+    tests[testId].B.openRate = tests[testId].B.sent ? Math.round((tests[testId].B.opens/tests[testId].B.sent)*100) : 0;
+    tests[testId].winner = tests[testId].A.openRate >= tests[testId].B.openRate ? 'A' : 'B';
+  });
+  res.json({ tests });
+});
+
+// ── ANALYTICS (enhanced) ─────────────────────────────────────────────────
+app.get('/api/analytics', (req,res) => {
+  const total=leads.length,
+        withEmail=leads.filter(l=>l.foundEmail).length,
+        withSite=leads.filter(l=>l.siteFile).length,
+        contacted=leads.filter(l=>l.outreachEmail).length,
+        hot=leads.filter(l=>l.status==='Hot Lead 🔥').length,
+        replied=replies.length;
+  // Tracking stats
+  const totalOpens = tracking.filter(t=>t.opens.length>0).length;
+  const totalClicks = tracking.filter(t=>t.clicks.length>0).length;
+  const outreachTracked = tracking.filter(t=>t.type==='outreach'||t.type==='ab_test').length;
+  const openRate = outreachTracked ? Math.round((totalOpens/outreachTracked)*100) : 0;
+  const clickRate = outreachTracked ? Math.round((totalClicks/outreachTracked)*100) : 0;
+  const replyRate = contacted ? Math.round((replied/contacted)*100) : 0;
+  // Per-city breakdown
+  const cities = {};
+  leads.forEach(l => {
+    const city = l.location || 'Unknown';
+    if (!cities[city]) cities[city] = { total:0, withEmail:0, contacted:0, replied:0, hot:0 };
+    cities[city].total++;
+    if (l.foundEmail) cities[city].withEmail++;
+    if (l.outreachEmail) cities[city].contacted++;
+    if (l.status==='Hot Lead 🔥') cities[city].hot++;
+  });
+  replies.forEach(r => {
+    const f = findLead(r.leadId);
+    if (f) {
+      const city = f.lead.location || 'Unknown';
+      if (cities[city]) cities[city].replied++;
+    }
+  });
+  // Per business type breakdown
+  const types = {};
+  leads.forEach(l => {
+    const t = l.type || 'unknown';
+    if (!types[t]) types[t] = { total:0, withEmail:0, contacted:0 };
+    types[t].total++;
+    if (l.foundEmail) types[t].withEmail++;
+    if (l.outreachEmail) types[t].contacted++;
+  });
+  // Per-day trends
+  const dailyLeads = {}, dailyEmails = {};
+  leads.forEach(l => {
+    if (l.found_at) { const d=l.found_at.slice(0,10); dailyLeads[d]=(dailyLeads[d]||0)+1; }
+  });
+  outreach.forEach(o => {
+    if (o.sentAt) { const d=o.sentAt.slice(0,10); dailyEmails[d]=(dailyEmails[d]||0)+1; }
+  });
+  res.json({
+    total, withEmail, withSite, contacted, replied, hotLeads:hot,
+    convRate: contacted>0?((hot/contacted)*100).toFixed(1):0,
+    openRate, clickRate, replyRate, totalOpens, totalClicks,
+    cities, types, dailyLeads, dailyEmails,
+    activeSequences: sequences.filter(s=>s.status==='active').length,
+    scheduledPending: scheduled.filter(s=>s.status==='pending').length,
+  });
+});
+
+// ── SOCIAL FINDER ─────────────────────────────────────────────────────────
+app.post('/api/social/find', async (req, res) => {
+  const { id, sessionId } = req.body;
+  const f = findLead(id);
+  if (!f) return res.status(404).json({ error: 'Lead not found' });
+  res.json({ status: 'started' });
+  try {
+    const result = await findSocialMedia(f.lead, p => emit(sessionId, { type: 'social', ...p }));
+    leads[f.index].socials = result;
+    save(LF, leads);
+    emit(sessionId, { type: 'social_done', leadId: id, result });
+  } catch(e) {
+    emit(sessionId, { type: 'error', agent: 'social', message: e.message });
+  }
+});
+
+app.post('/api/social/find-batch', async (req, res) => {
+  const { ids, sessionId } = req.body;
+  if (!ids?.length) return res.status(400).json({ error: 'No leads selected' });
+  res.json({ status: 'started' });
+  emit(sessionId, { type: 'social', status: 'start', message: `🚀 Searching social media for ${ids.length} leads...` });
+  let found = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const f = findLead(ids[i]);
+    if (!f) continue;
+    const { lead, index } = f;
+    try {
+      emit(sessionId, { type: 'social', status: 'searching', message: `[${i+1}/${ids.length}] Searching: ${lead.name}` });
+      const result = await findSocialMedia(lead, p => emit(sessionId, { type: 'social', ...p }));
+      leads[index].socials = result;
+      save(LF, leads);
+      if (result.foundCount > 0) found++;
+      emit(sessionId, { type: 'social_done', leadId: ids[i], result });
+    } catch(e) {
+      emit(sessionId, { type: 'social', status: 'error', message: `❌ ${lead.name}: ${e.message}` });
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  emit(sessionId, { type: 'social_batch_done', found, total: ids.length });
+  emit(sessionId, { type: 'social', status: 'complete', message: `🏁 Done — ${found}/${ids.length} leads have social profiles` });
 });
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────
@@ -397,13 +860,9 @@ app.post('/api/settings', (req,res) => {
   res.json({ok:true});
 });
 
-// ── ANALYTICS ─────────────────────────────────────────────────────────────
-app.get('/api/analytics', (req,res) => {
-  const total=leads.length,withEmail=leads.filter(l=>l.foundEmail).length,
-        withSite=leads.filter(l=>l.siteFile).length,contacted=leads.filter(l=>l.outreachEmail).length,
-        hot=leads.filter(l=>l.status==='Hot Lead 🔥').length;
-  res.json({ total,withEmail,withSite,contacted,replied:replies.length,hotLeads:hot,
-    convRate:contacted>0?((hot/contacted)*100).toFixed(1):0 });
+// ── TRACKING DATA ENDPOINT ───────────────────────────────────────────────
+app.get('/api/tracking', (req,res) => {
+  res.json({ tracking });
 });
 
 app.listen(PORT, () => {
@@ -419,52 +878,4 @@ app.listen(PORT, () => {
     console.log(`  ⚠️  WARNING: Resend not configured — outreach emails will fail!`);
     console.log(`     Set RESEND_API_KEY and RESEND_FROM in .env or via Settings.\n`);
   }
-});
-
-// ── SOCIAL FINDER ─────────────────────────────────────────────────────────
-const { findSocialMedia } = require('./agents/socialfinder');
-
-app.post('/api/social/find', async (req, res) => {
-  const { leadIndex, sessionId } = req.body;
-  const lead = leads[leadIndex];
-  if (!lead) return res.status(404).json({ error: 'Lead not found' });
-  if (!lead.siteFile) return res.status(400).json({ error: 'Build a demo site first before finding social media.' });
-  res.json({ status: 'started' });
-  try {
-    const result = await findSocialMedia(lead, p => emit(sessionId, { type: 'social', ...p }));
-    leads[leadIndex].socials = result;
-    save(LF, leads);
-    emit(sessionId, { type: 'social_done', leadIndex, result });
-  } catch(e) {
-    emit(sessionId, { type: 'error', agent: 'social', message: e.message });
-  }
-});
-
-app.post('/api/social/find-batch', async (req, res) => {
-  const { leadIndices, sessionId } = req.body;
-  if (!leadIndices?.length) return res.status(400).json({ error: 'No leads selected' });
-  res.json({ status: 'started' });
-  emit(sessionId, { type: 'social', status: 'start', message: `🚀 Searching social media for ${leadIndices.length} leads...` });
-  let found = 0;
-  for (let i = 0; i < leadIndices.length; i++) {
-    const idx = leadIndices[i];
-    const lead = leads[idx];
-    if (!lead || !lead.siteFile) {
-      emit(sessionId, { type: 'social', status: 'skip', message: `⏭ Skipping ${lead?.name || idx} — no site built yet` });
-      continue;
-    }
-    try {
-      emit(sessionId, { type: 'social', status: 'searching', message: `[${i+1}/${leadIndices.length}] Searching: ${lead.name}` });
-      const result = await findSocialMedia(lead, p => emit(sessionId, { type: 'social', ...p }));
-      leads[idx].socials = result;
-      save(LF, leads);
-      if (result.foundCount > 0) found++;
-      emit(sessionId, { type: 'social_done', leadIndex: idx, result });
-    } catch(e) {
-      emit(sessionId, { type: 'social', status: 'error', message: `❌ ${lead.name}: ${e.message}` });
-    }
-    await new Promise(r => setTimeout(r, 500));
-  }
-  emit(sessionId, { type: 'social_batch_done', found, total: leadIndices.length });
-  emit(sessionId, { type: 'social', status: 'complete', message: `🏁 Done — ${found}/${leadIndices.length} leads have social profiles` });
 });

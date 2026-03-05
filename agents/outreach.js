@@ -115,7 +115,7 @@ async function generateEmailPreview(lead, previewUrl) {
   return generateEmailCopy(lead, previewUrl);
 }
 
-async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride) {
+async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts) {
   onProgress({ status: 'generating', message: `Generating samples for ${lead.name}...` });
 
   let samples;
@@ -140,6 +140,9 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
+  // Determine URLs for links — use click tracking if available
+  const linkUrl = trackingOpts?.clickUrl || previewUrl;
+
   let samplesHtml = '';
   if (samples) {
     samplesHtml = `
@@ -148,7 +151,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       <p style="font-size:11.5px;color:#999;margin:0 0 22px">Ready to use — no editing needed.</p>
 
       <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">01 — Custom Demo Website</p>
-      <a href="${previewUrl}" style="font-size:12.5px;color:#4f46e5;word-break:break-all;display:block;margin-bottom:20px">${previewUrl}</a>
+      <a href="${linkUrl}" style="font-size:12.5px;color:#4f46e5;word-break:break-all;display:block;margin-bottom:20px">${previewUrl}</a>
 
       <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">02 — Instagram Caption</p>
       <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.instagram_post || ''}</div>
@@ -169,9 +172,19 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     `;
   }
 
-  const bodyHtml = copy.body.split('\n').filter(l => l.trim()).map(l =>
-    `<p style="margin:0 0 16px;font-size:14.5px;line-height:1.8;color:#2d2d2d">${l}</p>`
-  ).join('');
+  // Replace preview URL in body with click-tracked URL
+  let bodyText = copy.body;
+  let bodyHtml = bodyText.split('\n').filter(l => l.trim()).map(l => {
+    let line = l;
+    if (trackingOpts?.clickUrl && previewUrl) {
+      const escaped = previewUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
+    }
+    return `<p style="margin:0 0 16px;font-size:14.5px;line-height:1.8;color:#2d2d2d">${line}</p>`;
+  }).join('');
+
+  // Tracking pixel HTML
+  const pixelHtml = trackingOpts?.pixelHtml || '';
 
   await resend.emails.send({
     from: `Leif | WebForge <${RESEND_FROM}>`,
@@ -191,6 +204,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       <div style="background:#f8f8f8;padding:14px 28px;border:1px solid #e8e8e8;border-top:none;border-radius:0 0 8px 8px">
         <p style="font-size:11px;color:#bbb;margin:0">WebForge — Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
       </div>
+      ${pixelHtml}
     </div>`
   });
 
@@ -198,4 +212,102 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString() };
 }
 
-module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples };
+// ── FOLLOW-UP EMAIL GENERATION ────────────────────────────────────────────
+async function generateFollowUpEmail(lead, step, previousSubject) {
+  const client = getClient();
+  const type = (lead.type || 'business').replace(/_/g, ' ');
+  const angles = [
+    'Check in — did they see the demo? Short, casual, reference the original email.',
+    'Value add — share a quick tip or insight relevant to their business type. Position as helpful, not salesy.',
+    'Last touch — final follow-up. Be direct but not pushy. Mention this is the last email unless they want to chat.'
+  ];
+  const angle = angles[Math.min(step-1, angles.length-1)];
+
+  const msg = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 600,
+    messages: [{ role: 'user', content:
+`Write a follow-up email #${step} from Leif (WebForge) to the owner of "${lead.name}", a ${type}.
+This is follow-up ${step} of 3. Previous subject was: "${previousSubject}"
+
+Angle for this follow-up: ${angle}
+
+Rules:
+- Very short (under 80 words)
+- Casual, human, like a real person checking in
+- Reference the original email/demo
+- No corporate language
+- Subject line: short, casual, different from the original
+- Sign off: Leif
+
+Return ONLY valid JSON: {"subject":"...","body":"..."}`
+    }]
+  });
+
+  const result = parseJSON(msg.content[0].text);
+  if (!result?.subject || !result?.body) throw new Error('Failed to generate follow-up.');
+  return result;
+}
+
+// ── DM SCRIPT GENERATION ──────────────────────────────────────────────────
+async function generateDMScript(lead, platform) {
+  const client = getClient();
+  const type = (lead.type || 'business').replace(/_/g, ' ');
+  const platformName = platform === 'facebook' ? 'Facebook Messenger' : 'Instagram DM';
+
+  const msg = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 800,
+    messages: [{ role: 'user', content:
+`Generate 3 different ${platformName} scripts from Leif (WebForge) to the owner of "${lead.name}", a ${type} at ${lead.address}.
+Rating: ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews' : 'N/A'}.
+
+Each script should be:
+- Very casual and conversational (DM style, not email style)
+- Under 60 words each
+- Reference something specific about their business
+- Mention that Leif built them a free demo website
+- End with a soft call to action (link to demo or quick call)
+- Sound like a real person, not a marketer
+- Different angle for each (compliment, value-first, curiosity)
+
+Return ONLY valid JSON:
+{"scripts": [
+  {"label": "Approach name", "text": "The DM script..."},
+  {"label": "Approach name", "text": "The DM script..."},
+  {"label": "Approach name", "text": "The DM script..."}
+]}`
+    }]
+  });
+
+  const result = parseJSON(msg.content[0].text);
+  if (!result?.scripts) throw new Error('Failed to generate DM scripts.');
+  return result.scripts;
+}
+
+// ── A/B SUBJECT LINE GENERATION ───────────────────────────────────────────
+async function generateABSubjects(lead, previewUrl) {
+  const client = getClient();
+  const type = (lead.type || 'business').replace(/_/g, ' ');
+
+  const msg = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 200,
+    messages: [{ role: 'user', content:
+`Generate 2 very different email subject line variations for a cold outreach email from Leif (WebForge) to "${lead.name}", a ${type}.
+
+Variation A: More direct/specific — reference something about their business
+Variation B: More curiosity-driven — create intrigue
+
+Rules: Under 9 words each, no exclamation marks, sound like a real person, not a marketer.
+
+Return ONLY valid JSON: {"subjectA":"...","subjectB":"..."}`
+    }]
+  });
+
+  const result = parseJSON(msg.content[0].text);
+  if (!result?.subjectA || !result?.subjectB) throw new Error('Failed to generate A/B subjects.');
+  return result;
+}
+
+module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples, generateFollowUpEmail, generateDMScript, generateABSubjects };

@@ -8,7 +8,7 @@ function getClient() {
 
 function parseJSON(text) {
   try { return JSON.parse(text); } catch {}
-  const m = text.match(/\{[\s\S]*?\}/);
+  const m = text.match(/\{[\s\S]*\}/);
   if (m) try { return JSON.parse(m[0]); } catch {}
   return null;
 }
