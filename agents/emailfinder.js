@@ -2,12 +2,13 @@ const axios = require('axios');
 const https = require('https');
 const http = require('http');
 const puppeteer = require('puppeteer');
-const { findSocialMedia } = require('./socialfinder');
+// Social finder no longer needed — we use slug guessing + Puppeteer directly
 const HUNTER = 'https://api.hunter.io/v2';
+
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // Shared browser instance (reused across calls)
 let browserInstance = null;
-let fbLoggedIn = false;
 let igLoggedIn = false;
 
 async function getBrowser() {
@@ -18,50 +19,8 @@ async function getBrowser() {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     timeout: 20000
   });
-  fbLoggedIn = false;
   igLoggedIn = false;
   return browserInstance;
-}
-
-// Log into Facebook once, reuse session across scrapes
-async function ensureFbLogin(browser, onProgress) {
-  if (fbLoggedIn) return true;
-  const email = process.env.FB_EMAIL;
-  const pass = process.env.FB_PASSWORD;
-  if (!email || !pass) return false;
-
-  onProgress && onProgress({ status:'searching', message:`📘 Logging into Facebook...` });
-  let page;
-  try {
-    page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.goto('https://www.facebook.com/login', { waitUntil: 'networkidle2', timeout: 20000 });
-    await page.waitForSelector('input[name="email"]', { timeout: 10000 });
-    await page.type('input[name="email"]', email, { delay: 50 });
-    await page.type('input[name="pass"]', pass, { delay: 50 });
-    await page.evaluate(() => {
-      const btn = document.querySelector('input[type="submit"]') || document.querySelector('button[type="submit"]') || document.querySelector('[name="login"]');
-      if (btn) btn.click();
-    });
-    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
-
-    // Check if login succeeded
-    const url = page.url();
-    if (url.includes('checkpoint') || url.includes('login')) {
-      onProgress && onProgress({ status:'error', message:`⚠ Facebook login blocked — check your account for security prompts` });
-      await page.close();
-      return false;
-    }
-
-    fbLoggedIn = true;
-    onProgress && onProgress({ status:'found', message:`✅ Facebook login successful` });
-    await page.close();
-    return true;
-  } catch(e) {
-    if (page) await page.close().catch(() => {});
-    onProgress && onProgress({ status:'error', message:`⚠ Facebook login failed: ${e.message}` });
-    return false;
-  }
 }
 
 // Email extraction from text/HTML
@@ -93,42 +52,154 @@ function fetchPage(url) {
   });
 }
 
-// Step 1: Scrape Facebook page with Puppeteer (logged in)
-async function findEmailFromFacebook(lead, onProgress) {
-  const fbUrl = lead.socials?.facebook?.url;
-  if (!fbUrl) return null;
+// Generate Facebook slug guesses from business name
+function generateSlugs(name, location) {
+  // Clean name: remove emojis, parenthetical text, special chars
+  let clean = name
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}]/gu, '')
+    .replace(/\(.*?\)/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[''`]/g, '')
+    .replace(/&/g, 'and');
 
-  const browser = await getBrowser();
-  const loggedIn = await ensureFbLogin(browser, onProgress);
-  if (!loggedIn) {
-    onProgress && onProgress({ status:'error', message:`⚠ Skipping Facebook — no login credentials. Add them in Settings.` });
+  // Extract city abbreviation from location (e.g., "Los Angeles USA" -> "la")
+  const cityAbbrevs = {
+    'los angeles': 'la', 'new york': 'ny', 'san francisco': 'sf', 'san diego': 'sd',
+    'las vegas': 'lv', 'washington': 'dc', 'chicago': 'chi', 'philadelphia': 'philly',
+    'houston': 'htx', 'dallas': 'dfw', 'miami': 'mia', 'atlanta': 'atl',
+    'denver': 'den', 'seattle': 'sea', 'boston': 'bos', 'phoenix': 'phx',
+    'portland': 'pdx', 'austin': 'atx', 'nashville': 'nash',
+  };
+  const loc = (location || '').toLowerCase();
+  let cityShort = '';
+  for (const [city, abbr] of Object.entries(cityAbbrevs)) {
+    if (loc.includes(city)) { cityShort = abbr; break; }
+  }
+
+  const words = clean.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+
+  const joined = words.join('');
+  const dotted = words.join('.');
+  const slugs = new Set();
+
+  // Core variations
+  slugs.add(joined);                           // marugamemonzo
+  if (words.length > 1) slugs.add(dotted);     // marugame.monzo
+  if (words.length > 1) slugs.add(words[0]);   // marugame (first word only)
+
+  // With city suffix
+  if (cityShort) {
+    slugs.add(joined + cityShort);             // marugamemonzola
+    slugs.add(joined + '.' + cityShort);       // marugamemonzo.la
+    if (words.length > 1) slugs.add(words[0] + cityShort); // marugamela
+  }
+
+  // "the" prefix removal
+  if (words[0] === 'the' && words.length > 1) {
+    const noThe = words.slice(1).join('');
+    slugs.add(noThe);
+    if (cityShort) slugs.add(noThe + cityShort);
+  }
+
+  // "official" suffix
+  slugs.add(joined + 'official');
+
+  return [...slugs].slice(0, 8);
+}
+
+// Step 1: Find Facebook page via slug guessing + scrape for email in one pass (no login needed)
+async function findEmailFromFacebook(lead, onProgress) {
+  // If we already have a FB URL, go straight to scraping
+  let knownUrl = lead.socials?.facebook?.url || null;
+
+  if (!knownUrl) {
+    const slugs = generateSlugs(lead.name, lead.location);
+    if (!slugs.length) {
+      onProgress && onProgress({ status:'not_found', message:`No Facebook page found for ${lead.name}` });
+      return null;
+    }
+
+    onProgress && onProgress({ status:'searching', message:`📘 Trying ${slugs.length} Facebook URL guesses for ${lead.name}...` });
+    const browser = await getBrowser();
+
+    for (const slug of slugs) {
+      let page;
+      try {
+        page = await browser.newPage();
+        await page.setUserAgent(UA);
+        const fbUrl = 'https://www.facebook.com/' + slug;
+        await page.goto(fbUrl + '/about', { waitUntil: 'networkidle2', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 2000));
+        const text = await page.evaluate(() => document.body.innerText);
+
+        const isReal = !text.includes("This page isn't available") &&
+                       !text.includes('Page Not Found') &&
+                       !text.includes("this content isn't available") &&
+                       !text.includes('Sorry, this page') &&
+                       text.length > 200;
+
+        const emails = extractEmails(text);
+
+        if (isReal || emails.length) {
+          // Save the FB URL to the lead
+          if (!lead.socials) lead.socials = {};
+          if (!lead.socials.facebook) lead.socials.facebook = { url: fbUrl, source: 'slug_guess' };
+          onProgress && onProgress({ status:'found', message:`📘 Found Facebook page: ${fbUrl}` });
+
+          // We already have the about page text, check for email right here
+          if (emails.length) {
+            await page.close();
+            onProgress && onProgress({ status:'found', message:`✅ Found on Facebook: ${emails[0]}` });
+            return { email: emails[0], confidence: 80, source: 'facebook' };
+          }
+
+          // No email on about page, try main page
+          onProgress && onProgress({ status:'searching', message:`📘 Checking main FB page...` });
+          await page.goto(fbUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+          await new Promise(r => setTimeout(r, 2000));
+          const mainText = await page.evaluate(() => document.body.innerText);
+          const mainEmails = extractEmails(mainText);
+          await page.close();
+
+          if (mainEmails.length) {
+            onProgress && onProgress({ status:'found', message:`✅ Found on Facebook: ${mainEmails[0]}` });
+            return { email: mainEmails[0], confidence: 80, source: 'facebook' };
+          }
+
+          onProgress && onProgress({ status:'not_found', message:`No email on Facebook page` });
+          return null;
+        }
+        await page.close();
+      } catch(e) {
+        if (page) await page.close().catch(() => {});
+      }
+    }
+    onProgress && onProgress({ status:'not_found', message:`No Facebook page found for ${lead.name}` });
     return null;
   }
 
-  onProgress && onProgress({ status:'searching', message:`📘 Scraping Facebook: ${fbUrl}` });
+  // Scrape known FB URL
+  onProgress && onProgress({ status:'searching', message:`📘 Scraping Facebook: ${knownUrl}` });
   let page;
   try {
+    const browser = await getBrowser();
     page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.setViewport({ width: 1280, height: 800 });
-
-    // Go to the About page for contact info
-    const aboutUrl = fbUrl.replace(/\/$/, '') + '/about';
-    await page.goto(aboutUrl, { waitUntil: 'networkidle2', timeout: 25000 });
-    await new Promise(r => setTimeout(r, 3000));
-
+    await page.setUserAgent(UA);
+    const aboutUrl = knownUrl.replace(/\/$/, '') + '/about';
+    await page.goto(aboutUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+    await new Promise(r => setTimeout(r, 2000));
     const text = await page.evaluate(() => document.body.innerText);
     let emails = extractEmails(text);
 
-    // Also check main page if about didn't have it
     if (!emails.length) {
-      onProgress && onProgress({ status:'searching', message:`📘 Checking main page...` });
-      await page.goto(fbUrl, { waitUntil: 'networkidle2', timeout: 25000 });
-      await new Promise(r => setTimeout(r, 3000));
+      onProgress && onProgress({ status:'searching', message:`📘 Checking main FB page...` });
+      await page.goto(knownUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+      await new Promise(r => setTimeout(r, 2000));
       const mainText = await page.evaluate(() => document.body.innerText);
       emails = extractEmails(mainText);
     }
-
     await page.close();
 
     if (emails.length) {
@@ -158,9 +229,10 @@ async function ensureIgLogin(browser, onProgress) {
     await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'networkidle2', timeout: 20000 });
     await new Promise(r => setTimeout(r, 2000));
 
-    await page.waitForSelector('input[name="email"]', { timeout: 10000 });
-    await page.type('input[name="email"]', email, { delay: 50 });
-    await page.type('input[name="pass"]', pass, { delay: 50 });
+    // Instagram uses "username" not "email" for the login field
+    const userField = await page.waitForSelector('input[name="username"], input[name="email"]', { timeout: 10000 });
+    await userField.type(email, { delay: 50 });
+    await page.type('input[name="password"], input[name="pass"]', pass, { delay: 50 });
     await page.evaluate(() => {
       const btn = document.querySelector('input[type="submit"]') || document.querySelector('button[type="submit"]');
       if (btn) btn.click();
@@ -199,49 +271,99 @@ async function ensureIgLogin(browser, onProgress) {
   }
 }
 
-// Step 2: Scrape Instagram bio for email (Puppeteer — direct login)
+// Step 2: Find Instagram page via slug guessing + scrape for email in one pass (needs IG login)
 async function findEmailFromInstagram(lead, onProgress) {
-  const igUrl = lead.socials?.instagram?.url;
-  if (!igUrl) return null;
-
   const browser = await getBrowser();
   const loggedIn = await ensureIgLogin(browser, onProgress);
   if (!loggedIn) {
-    onProgress && onProgress({ status:'error', message:`⚠ Skipping Instagram — login failed. Add FB_EMAIL/FB_PASSWORD in Settings.` });
+    onProgress && onProgress({ status:'error', message:`⚠ Skipping Instagram, login failed` });
     return null;
   }
 
-  onProgress && onProgress({ status:'searching', message:`📸 Scraping Instagram: ${igUrl}` });
+  // If we already have an IG URL, go straight to scraping
+  let knownUrl = lead.socials?.instagram?.url || null;
+
+  if (!knownUrl) {
+    const slugs = generateSlugs(lead.name, lead.location);
+    if (!slugs.length) {
+      onProgress && onProgress({ status:'not_found', message:`No Instagram page found for ${lead.name}` });
+      return null;
+    }
+
+    onProgress && onProgress({ status:'searching', message:`📸 Trying ${slugs.length} Instagram URL guesses...` });
+
+    for (const slug of slugs) {
+      let page;
+      try {
+        page = await browser.newPage();
+        await page.setUserAgent(UA);
+        const igUrl = 'https://www.instagram.com/' + slug + '/';
+        await page.goto(igUrl, { waitUntil: 'networkidle2', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 2000));
+
+        const data = await page.evaluate(() => {
+          const text = document.body.innerText;
+          const exists = !text.includes("this page isn't available") &&
+                         !text.includes("Sorry, this page") &&
+                         !text.includes("Page Not Found") &&
+                         document.querySelectorAll('header').length > 0;
+          const mailtos = Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0]);
+          return { text, exists, mailtos };
+        });
+        await page.close();
+
+        if (data.exists) {
+          if (!lead.socials) lead.socials = {};
+          if (!lead.socials.instagram) lead.socials.instagram = { url: igUrl, source: 'slug_guess' };
+          onProgress && onProgress({ status:'found', message:`📸 Found Instagram: ${igUrl}` });
+
+          // Extract email from the page we already loaded
+          if (data.mailtos.length) {
+            onProgress && onProgress({ status:'found', message:`✅ Found on Instagram (email button): ${data.mailtos[0]}` });
+            return { email: data.mailtos[0], confidence: 90, source: 'instagram' };
+          }
+          const emails = extractEmails(data.text);
+          if (emails.length) {
+            onProgress && onProgress({ status:'found', message:`✅ Found on Instagram bio: ${emails[0]}` });
+            return { email: emails[0], confidence: 75, source: 'instagram' };
+          }
+
+          onProgress && onProgress({ status:'not_found', message:`No email on Instagram` });
+          return null;
+        }
+      } catch(e) {
+        if (page) await page.close().catch(() => {});
+      }
+    }
+    onProgress && onProgress({ status:'not_found', message:`No Instagram page found for ${lead.name}` });
+    return null;
+  }
+
+  // Scrape known IG URL
+  onProgress && onProgress({ status:'searching', message:`📸 Scraping Instagram: ${knownUrl}` });
   let page;
   try {
     page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.goto(igUrl, { waitUntil: 'networkidle2', timeout: 20000 });
-    await new Promise(r => setTimeout(r, 3000));
+    await page.setUserAgent(UA);
+    await page.goto(knownUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+    await new Promise(r => setTimeout(r, 2000));
 
-    // Extract bio text and any mailto: links from the page
     const data = await page.evaluate(() => {
       const text = document.body.innerText;
       const mailtos = Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0]);
       return { text, mailtos };
     });
-
     await page.close();
 
-    // Check mailto links first (most reliable — it's the actual email button)
     if (data.mailtos.length) {
-      const email = data.mailtos[0];
-      onProgress && onProgress({ status:'found', message:`✅ Found on Instagram (email button): ${email}` });
-      return { email, confidence: 90, source: 'instagram' };
+      onProgress && onProgress({ status:'found', message:`✅ Found on Instagram (email button): ${data.mailtos[0]}` });
+      return { email: data.mailtos[0], confidence: 90, source: 'instagram' };
     }
-
-    // Fall back to extracting emails from bio text
     const emails = extractEmails(data.text);
     if (emails.length) {
       onProgress && onProgress({ status:'found', message:`✅ Found on Instagram bio: ${emails[0]}` });
       return { email: emails[0], confidence: 75, source: 'instagram' };
     }
-
     onProgress && onProgress({ status:'not_found', message:`No email on Instagram` });
   } catch(e) {
     if (page) await page.close().catch(() => {});
@@ -320,34 +442,30 @@ async function hunterSearch(lead, onProgress) {
   return null;
 }
 
-// Main findEmail — Facebook + Instagram + website (no Hunter)
+// Main findEmail pipeline: Facebook slug guess → Instagram slug guess → Website
 async function findEmail(lead, onProgress) {
   onProgress && onProgress({ status:'searching', message:`🔎 Finding email for ${lead.name}...` });
 
-  // Auto-find socials if not already done
-  if (!lead.socials || !lead.socials.searchedAt) {
-    onProgress && onProgress({ status:'searching', message:`📱 Finding social profiles first...` });
-    try {
-      lead.socials = await findSocialMedia(lead, onProgress);
-    } catch(e) {
-      onProgress && onProgress({ status:'error', message:`⚠ Social search failed: ${e.message}` });
-    }
-  }
-
-  // Step 1: Try Facebook page (Puppeteer)
+  // Step 1: Find + scrape Facebook page (slug guessing → Puppeteer scrape, no login needed)
   const fb = await findEmailFromFacebook(lead, onProgress);
-  if (fb) return fb;
+  if (fb) { markSearched(lead); return fb; }
 
-  // Step 2: Try Instagram bio (Puppeteer)
+  // Step 2: Find + scrape Instagram page (slug guessing → Puppeteer scrape, needs IG login)
   const ig = await findEmailFromInstagram(lead, onProgress);
-  if (ig) return ig;
+  if (ig) { markSearched(lead); return ig; }
 
-  // Step 3: Try business website
+  // Step 3: Try website if available (usually not, since scout filters for no-website leads)
   const web = await findEmailFromWebsite(lead, onProgress);
-  if (web) return web;
+  if (web) { markSearched(lead); return web; }
 
+  markSearched(lead);
   onProgress && onProgress({ status:'not_found', message:`❌ No email found for ${lead.name}` });
   return null;
+}
+
+function markSearched(lead) {
+  if (!lead.socials) lead.socials = {};
+  lead.socials.searchedAt = new Date().toISOString();
 }
 
 async function checkCredits() {
