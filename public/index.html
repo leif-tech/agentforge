@@ -222,7 +222,9 @@ input[type=range]{flex:1;accent-color:var(--cyan);cursor:pointer;padding:0}
 }
 .ttag span{cursor:pointer;opacity:.6;line-height:1;font-size:12px}
 .ttag span:hover{opacity:1}
-.tpicker{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
+.tpicker{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;max-height:210px;overflow-y:auto;padding-right:4px}
+.tcat-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:0 2px}
+.tcat-items{display:flex;flex-wrap:wrap;gap:3px}
 .tp{
   padding:3px 9px;border-radius:20px;border:1px solid var(--b1);
   background:transparent;font-family:var(--font);font-size:10px;font-weight:600;
@@ -912,13 +914,20 @@ let sid='af_'+Math.random().toString(36).substr(2,9);
 let sse=null;
 
 const TYPES=[
-  {v:'restaurant',l:'Restaurant'},{v:'cafe',l:'Café'},{v:'bakery',l:'Bakery'},
-  {v:'bar',l:'Bar/Pub'},{v:'beauty_salon',l:'Beauty Salon'},{v:'hair_care',l:'Hair Salon'},
-  {v:'laundry',l:'Laundry'},{v:'clothing_store',l:'Clothing'},{v:'gym',l:'Gym'},
-  {v:'florist',l:'Florist'},{v:'pet_store',l:'Pet Store'},{v:'hardware_store',l:'Hardware'},
-  {v:'dentist',l:'Dentist'},{v:'chiropractor',l:'Chiropractor'},
-  {v:'plumber',l:'Plumber'},{v:'electrician',l:'Electrician'},
-  {v:'grocery_or_supermarket',l:'Grocery'},
+  {v:'restaurant',l:'Restaurant',c:'Food & Drink'},{v:'cafe',l:'Cafe',c:'Food & Drink'},{v:'bakery',l:'Bakery',c:'Food & Drink'},
+  {v:'bar',l:'Bar / Pub',c:'Food & Drink'},{v:'grocery_or_supermarket',l:'Grocery',c:'Food & Drink'},
+  {v:'beauty_salon',l:'Beauty Salon',c:'Personal Care'},{v:'hair_care',l:'Hair Salon',c:'Personal Care'},
+  {v:'barbershop',l:'Barbershop',c:'Personal Care'},{v:'massage_therapist',l:'Massage Therapist',c:'Personal Care'},
+  {v:'tailor',l:'Tailor',c:'Personal Care'},
+  {v:'gym',l:'Gym',c:'Health & Fitness'},{v:'yoga_studio',l:'Yoga Studio',c:'Health & Fitness'},
+  {v:'dentist',l:'Dentist',c:'Health & Fitness'},{v:'chiropractor',l:'Chiropractor',c:'Health & Fitness'},
+  {v:'plumber',l:'Plumber',c:'Home Services'},{v:'electrician',l:'Electrician',c:'Home Services'},
+  {v:'roofer',l:'Roofer',c:'Home Services'},{v:'landscaper',l:'Landscaper',c:'Home Services'},
+  {v:'pool_cleaner',l:'Pool Cleaner',c:'Home Services'},{v:'pest_control',l:'Pest Control',c:'Home Services'},
+  {v:'auto_repair',l:'Auto Repair',c:'Other Services'},{v:'photographer',l:'Photographer',c:'Other Services'},
+  {v:'wedding_officiant',l:'Wedding Officiant',c:'Other Services'},{v:'florist',l:'Florist',c:'Other Services'},
+  {v:'pet_store',l:'Pet Store',c:'Other Services'},{v:'laundry',l:'Laundry',c:'Other Services'},
+  {v:'clothing_store',l:'Clothing',c:'Other Services'},{v:'hardware_store',l:'Hardware',c:'Other Services'},
 ];
 let selTypes=['restaurant'];
 
@@ -1062,7 +1071,11 @@ function onSSE(d){
 
 // ── TYPE PICKER ───────────────────────────────────────────────────────────
 function initTypes(){
-  document.getElementById('tpicker').innerHTML=TYPES.map(t=>`<div class="tp ${selTypes.includes(t.v)?'sel':''}" id="tp-${t.v}" onclick="togType('${t.v}')">${t.l}</div>`).join('');
+  const cats=[...new Set(TYPES.map(t=>t.c))];
+  document.getElementById('tpicker').innerHTML=cats.map(c=>{
+    const items=TYPES.filter(t=>t.c===c);
+    return `<div class="tcat"><div class="tcat-label">${c}</div><div class="tcat-items">${items.map(t=>`<div class="tp ${selTypes.includes(t.v)?'sel':''}" id="tp-${t.v}" onclick="togType('${t.v}')">${t.l}</div>`).join('')}</div></div>`;
+  }).join('');
   drawTags();
 }
 function togType(v){
@@ -1072,7 +1085,7 @@ function togType(v){
 }
 function drawTags(){
   document.getElementById('ttags').innerHTML=selTypes.map(v=>{const t=TYPES.find(x=>x.v===v);return`<span class="ttag">${t?.l||v} <span onclick="togType('${v}')">×</span></span>`;}).join('');
-  TYPES.forEach(t=>{const e=document.getElementById('tp-'+t.v);if(e)e.className=`tp ${selTypes.includes(t.v)?'sel':''}`;});
+  TYPES.forEach(t=>{const el=document.getElementById('tp-'+t.v);if(el)el.className=`tp ${selTypes.includes(t.v)?'sel':''}`;});
 }
 
 // ── SCOUT ─────────────────────────────────────────────────────────────────
