@@ -8,6 +8,7 @@ const HUNTER = 'https://api.hunter.io/v2';
 // Shared browser instance (reused across calls)
 let browserInstance = null;
 let fbLoggedIn = false;
+let igLoggedIn = false;
 
 async function getBrowser() {
   if (browserInstance && browserInstance.connected) return browserInstance;
@@ -18,6 +19,7 @@ async function getBrowser() {
     timeout: 20000
   });
   fbLoggedIn = false;
+  igLoggedIn = false;
   return browserInstance;
 }
 
@@ -141,7 +143,114 @@ async function findEmailFromFacebook(lead, onProgress) {
   return null;
 }
 
-// Step 2: Scrape business website (plain HTTP — no browser needed)
+// Log into Instagram once, reuse session across scrapes
+async function ensureIgLogin(browser, onProgress) {
+  if (igLoggedIn) return true;
+  const email = process.env.FB_EMAIL;
+  const pass = process.env.FB_PASSWORD;
+  if (!email || !pass) return false;
+
+  onProgress && onProgress({ status:'searching', message:`📸 Logging into Instagram...` });
+  let page;
+  try {
+    page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'networkidle2', timeout: 20000 });
+    await new Promise(r => setTimeout(r, 2000));
+
+    await page.waitForSelector('input[name="email"]', { timeout: 10000 });
+    await page.type('input[name="email"]', email, { delay: 50 });
+    await page.type('input[name="pass"]', pass, { delay: 50 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('input[type="submit"]') || document.querySelector('button[type="submit"]');
+      if (btn) btn.click();
+    });
+    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 3000));
+
+    const url = page.url();
+    if (url.includes('login') || url.includes('challenge') || url.includes('checkpoint')) {
+      onProgress && onProgress({ status:'error', message:`⚠ Instagram login blocked — check account for security prompts` });
+      await page.close();
+      return false;
+    }
+
+    // Dismiss "Save Login Info" or "Turn on Notifications" popups
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const notNow = btns.find(b => (b.textContent || '').toLowerCase().includes('not now'));
+      if (notNow) notNow.click();
+    });
+    await new Promise(r => setTimeout(r, 1000));
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const notNow = btns.find(b => (b.textContent || '').toLowerCase().includes('not now'));
+      if (notNow) notNow.click();
+    });
+
+    igLoggedIn = true;
+    onProgress && onProgress({ status:'found', message:`✅ Instagram login successful` });
+    await page.close();
+    return true;
+  } catch(e) {
+    if (page) await page.close().catch(() => {});
+    onProgress && onProgress({ status:'error', message:`⚠ Instagram login failed: ${e.message}` });
+    return false;
+  }
+}
+
+// Step 2: Scrape Instagram bio for email (Puppeteer — direct login)
+async function findEmailFromInstagram(lead, onProgress) {
+  const igUrl = lead.socials?.instagram?.url;
+  if (!igUrl) return null;
+
+  const browser = await getBrowser();
+  const loggedIn = await ensureIgLogin(browser, onProgress);
+  if (!loggedIn) {
+    onProgress && onProgress({ status:'error', message:`⚠ Skipping Instagram — login failed. Add FB_EMAIL/FB_PASSWORD in Settings.` });
+    return null;
+  }
+
+  onProgress && onProgress({ status:'searching', message:`📸 Scraping Instagram: ${igUrl}` });
+  let page;
+  try {
+    page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.goto(igUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Extract bio text and any mailto: links from the page
+    const data = await page.evaluate(() => {
+      const text = document.body.innerText;
+      const mailtos = Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0]);
+      return { text, mailtos };
+    });
+
+    await page.close();
+
+    // Check mailto links first (most reliable — it's the actual email button)
+    if (data.mailtos.length) {
+      const email = data.mailtos[0];
+      onProgress && onProgress({ status:'found', message:`✅ Found on Instagram (email button): ${email}` });
+      return { email, confidence: 90, source: 'instagram' };
+    }
+
+    // Fall back to extracting emails from bio text
+    const emails = extractEmails(data.text);
+    if (emails.length) {
+      onProgress && onProgress({ status:'found', message:`✅ Found on Instagram bio: ${emails[0]}` });
+      return { email: emails[0], confidence: 75, source: 'instagram' };
+    }
+
+    onProgress && onProgress({ status:'not_found', message:`No email on Instagram` });
+  } catch(e) {
+    if (page) await page.close().catch(() => {});
+    onProgress && onProgress({ status:'error', message:`⚠ Instagram scrape failed: ${e.message}` });
+  }
+  return null;
+}
+
+// Step 3: Scrape business website (plain HTTP — no browser needed)
 async function findEmailFromWebsite(lead, onProgress) {
   const website = lead.socials?.website || lead.website || null;
   if (!website) return null;
@@ -211,7 +320,7 @@ async function hunterSearch(lead, onProgress) {
   return null;
 }
 
-// Main findEmail — Facebook + website only (no Hunter)
+// Main findEmail — Facebook + Instagram + website (no Hunter)
 async function findEmail(lead, onProgress) {
   onProgress && onProgress({ status:'searching', message:`🔎 Finding email for ${lead.name}...` });
 
@@ -229,7 +338,11 @@ async function findEmail(lead, onProgress) {
   const fb = await findEmailFromFacebook(lead, onProgress);
   if (fb) return fb;
 
-  // Step 2: Try business website
+  // Step 2: Try Instagram bio (Puppeteer)
+  const ig = await findEmailFromInstagram(lead, onProgress);
+  if (ig) return ig;
+
+  // Step 3: Try business website
   const web = await findEmailFromWebsite(lead, onProgress);
   if (web) return web;
 
