@@ -14,71 +14,81 @@ function parseJSON(text) {
 }
 
 function cleanCopy(obj) {
-  if (!obj) return obj;
-  for (const key of Object.keys(obj)) {
-    if (typeof obj[key] === 'string') {
-      obj[key] = obj[key].replace(/\s*—\s*/g, ', ').replace(/,,/g, ',');
-    }
-  }
   return obj;
 }
 
 function buildEmailPrompt(lead, previewUrl, type) {
-  return `Write a cold outreach email from Leif to the owner of "${lead.name}", a ${type} at ${lead.address}.
-Google rating: ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews' : 'not yet rated'}.
+  const hasRating = lead.rating && lead.rating !== 'N/A';
+  const ratingInfo = hasRating ? `${lead.rating}/5 stars with ${lead.reviews} Google reviews` : 'not yet rated on Google';
 
-Leif is the founder of WebForge. He runs the company. He personally found this business, built them something real, and is reaching out as the person behind it — not a company blasting mass emails, not an employee.
+  return `You are writing a cold outreach email from Leif to the owner of "${lead.name}", a ${type} at ${lead.address}.
+Google rating: ${ratingInfo}.
+Demo site Leif already built for them: ${previewUrl}
 
-What Leif already built for them (for free):
-- A fully custom demo website, live right now at: ${previewUrl}
+---
 
-What Leif is handing over completely free:
-1. The live demo website (already built): ${previewUrl} — and Leif will make it their real, live website for free too. The demo is just the starting point, but they get to keep a fully finished site at no cost.
-2. A ready-to-post Instagram caption written for their business
-3. A professional Google review response template
-4. A customer follow-up message for after visits
-5. A full online presence audit — website, socials, reviews, local visibility
-All of this is theirs to keep. All Leif is asking for in return is a quick 5-10 minute call, that is it.
+YOUR JOB:
+Write cold outreach emails that make business owners suddenly realize they need a website — not by pitching features, but by surfacing a pain or gap they haven't thought about yet.
 
-What WebForge does with AI (beyond this free offer):
-- Custom websites built and maintained with AI
-- Automated social media content and scheduling across all platforms
-- AI-powered Google review management and reputation building
-- Automated customer follow-up and retention systems
-- Local SEO and Google Business Profile optimization
-- AI chatbots for websites to capture and convert leads 24/7
-- Targeted ad campaign management
-- Full business automation — letting owners focus on running the business
-The point is to make them feel like there is a serious, capable team behind this — not just a freelancer. But do not pitch everything. Just give them a real sense of scale.
+CORE PHILOSOPHY:
+- Lead with THEIR situation, not your services.
+- The goal is to create an "oh yeah, I do need this" moment.
+- People don't act on opportunity. They act on discomfort. Make them feel the gap.
+- Compliment what they've built, then flip it into a problem. Their strength becomes the reason they're losing something.
 
-Email structure:
-1. Opening — something genuinely specific about this business. Their rating, reviews, or something real about them. Make it feel like Leif actually looked them up. Warm, human, not corporate.
-2. Leif introduces himself as the founder of WebForge — not "I work with WebForge" or "I'm part of WebForge". He started it. Use natural phrasing like "I'm Leif — I started WebForge" or "I run WebForge". Then one sentence on what WebForge does with AI for local businesses. Personal, not a company pitch.
-3. Tell them about the demo site — include the actual URL ${previewUrl} so they can click it. Be clear: this is just a demo to show what is possible. The real site they get will be fully built around what they actually want — their style, colors, feel, everything. It can look completely different. The demo is just a taste.
-4. List the 5 free things clearly so the value feels undeniable. Make it very clear that the website is theirs, Leif will make it live for them for free. After listing the 5 items, reinforce that all they need to do is hop on a quick 5-10 minute call, that is it.
-5. The exchange — honest and direct: everything is free including making their website live. All Leif asks in return is a quick 5-10 minute call just to hear what they are currently struggling with in their business. That is it. Or if they prefer, they can just reply to this email and share what challenges they are facing. Either way works. Make this feel effortless.
-6. One line about everything else WebForge can handle with AI if they want to scale — make it feel like there is a lot more available.
-7. Sign off as Leif, WebForge — personal, confident, not corporate.
+---
 
-The goal of this email is to make saying NO feel stupid. The offer must be so obviously one-sided in their favor that ignoring it would feel like leaving real money and real value on the table for no reason. The ask is tiny, just 5-10 minutes or even just a reply email, and the value being handed over is massive and already done. That contrast must land hard.
+EMAIL STRUCTURE (follow this exact order):
 
-Rules:
-- Sound like a real founder who genuinely did the work before asking for anything
-- Leif must introduce himself as the person who runs/founded WebForge — never as someone who works there
-- The tone is confident and generous — not desperate, not salesy, not begging
-- Make the value feel undeniable — a real website is already live, real deliverables are ready, and it costs them nothing
-- The ask (5-10 minute call or just replying to the email) must feel laughably small compared to what they are getting
-- The reader should finish the email thinking "why would I say no to this"
-- Create a subtle sense that this offer will not sit around forever — Leif is busy, this is a specific offer for them
-- The demo URL must be visible and clickable in the body
-- Make it clear the demo is just the starting point — the real site will be built exactly around what they want
-- Short paragraphs, punchy, easy to read on a phone
-- Under 220 words for the main body
-- No pricing anywhere
-- No corporate language or buzzwords
-- Subject line: short (under 9 words), sounds like a real person texting not a marketer emailing, creates a "wait, what?" reaction — ideally references something they built or did for this specific business. Examples of the right tone: "I built something for you", "took a look at your place", "made this for [Business Name]", "had an idea about [Business Name]". Never use exclamation marks, never sound like a newsletter, never use words like "partnership", "opportunity", "grow", or "free"
-- Sign off: Leif, WebForge
-- NEVER use em dashes (—) anywhere in the subject or body. Use commas instead where an em dash would go. This is critical.
+1. HOOK — One sharp observation about their business. Specific. Flattering but with an edge. Use their actual rating/review count/niche.
+   Example: "${hasRating ? lead.rating + ' stars. ' + lead.reviews + ' reviews. That\'s rare — most ' + type + 's would kill for that.' : 'You\'ve built something real. A ' + type + ' that people actually talk about.'}"
+
+2. THE FLIP — Immediately turn that strength into a gap or loss. This is the "but here's what's slipping through" moment. Make them feel what they're losing by not having a website.
+   Example: "But right now, all that trust lives on Google. Someone hears about you, goes to look you up, and there's nowhere to land. So they move on."
+
+3. THE SOLUTION — Introduce the demo site Leif built for them. Keep it short. Include the clickable link: ${previewUrl}
+   One line explaining what it does for them, not how it works.
+   Example: "I built you something to fix that: ${previewUrl}"
+
+4. THE OFFER LIST — Use arrow bullets (→), not numbered lists. Keep each item to one line. No fluff. Include these 5:
+   → The demo site, fully built out and ready to go live (free)
+   → A ready-to-post Instagram caption written for their ${type}
+   → A professional response template for their Google reviews
+   → An automated customer follow-up message
+   → A full audit of their online presence — socials, search visibility, the works
+
+5. THE ASK — Small, low-friction. A quick call or just reply to this email. Frame it as "just tell me your biggest headache right now." Make it feel effortless. Do NOT specify a time length like "5-10 minutes."
+
+6. CLOSING LINE — One sentence that reframes everything. Give them credit for what they've built, then make the website feel like the obvious next step — not a sale.
+   Example: "You've already done the hard part. You've built something people love. Let's make sure they can actually find it."
+
+7. SIGN-OFF — "Leif" on one line, then "WebForge" on the next line. No titles. No phone numbers. Nothing else.
+
+---
+
+SUBJECT LINE RULES:
+- Must be specific to this business (use their review count, star rating, niche, or name).
+- Must create tension or imply a gap — not describe what the email contains.
+- Target length: 6-10 words.
+- No emojis. No exclamation marks.
+- Never use generic phrases like "quick question", "partnership opportunity", "I wanted to reach out", or "just checking in".
+- Formula: [Something they have] + [what they're missing because of it]
+  Example: "${hasRating ? lead.reviews + ' people loved you. Most never found you.' : lead.name + ' has fans. They just can\'t find you.'}"
+
+---
+
+TONE RULES:
+- Conversational, confident, never salesy.
+- Short paragraphs. One idea per paragraph.
+- Use em dashes (—) for natural pauses. Avoid semicolons.
+- Use short punchy sentences to land a point. "So they move on." — like that.
+- NEVER say: "I hope this finds you well", "I wanted to reach out", "synergy", "leverage", "solutions", or any agency jargon.
+- NEVER use exclamation marks.
+- Write like a person, not a company.
+
+---
+
+Under 200 words for the main body. No pricing anywhere. The email must feel like one human who noticed something and did something about it — not a pitch from a company.
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
@@ -299,9 +309,9 @@ async function generateFollowUpEmail(lead, step, previousSubject) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
   const angles = [
-    'Check in — did they see the demo? Short, casual, reference the original email.',
-    'Value add — share a quick tip or insight relevant to their business type. Position as helpful, not salesy.',
-    'Last touch — final follow-up. Be direct but not pushy. Mention this is the last email unless they want to chat.'
+    'Check in — did they see the demo? Reference the gap you surfaced in the first email. Remind them what they are losing, not what you are offering.',
+    'Value add — share one specific insight about their niche. Something they might not know about how customers find businesses like theirs. Make the gap feel more real.',
+    'Last touch — be direct. This is the last email. Restate the core tension one more time. Make ignoring it feel like a conscious choice to leave money on the table.'
   ];
   const angle = angles[Math.min(step-1, angles.length-1)];
 
@@ -310,18 +320,21 @@ async function generateFollowUpEmail(lead, step, previousSubject) {
     max_tokens: 600,
     messages: [{ role: 'user', content:
 `Write a follow-up email #${step} from Leif (WebForge) to the owner of "${lead.name}", a ${type}.
+${lead.rating !== 'N/A' ? 'Google rating: ' + lead.rating + '/5 with ' + lead.reviews + ' reviews.' : ''}
 This is follow-up ${step} of 3. Previous subject was: "${previousSubject}"
 
 Angle for this follow-up: ${angle}
 
 Rules:
 - Very short (under 80 words)
-- Casual, human, like a real person checking in
-- Reference the original email/demo
-- No corporate language
-- Subject line: short, casual, different from the original
-- Sign off: Leif
-- NEVER use em dashes (—) anywhere. Use commas instead where an em dash would go. This is critical.
+- Same tone as the original: conversational, confident, never salesy
+- Lead with their situation, not your services
+- Use em dashes (—) for natural pauses
+- Short punchy sentences to land a point
+- No corporate language, no exclamation marks
+- NEVER say: "just checking in", "following up", "I wanted to reach out", "circling back"
+- Subject line: 6-10 words, specific to their business, creates tension
+- Sign off: Leif on one line, WebForge on the next
 
 Return ONLY valid JSON: {"subject":"...","body":"..."}`
     }]

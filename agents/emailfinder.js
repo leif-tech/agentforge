@@ -34,9 +34,13 @@ async function ensureFbLogin(browser, onProgress) {
     page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     await page.goto('https://www.facebook.com/login', { waitUntil: 'networkidle2', timeout: 20000 });
-    await page.type('#email', email, { delay: 50 });
-    await page.type('#pass', pass, { delay: 50 });
-    await page.click('[name="login"]');
+    await page.waitForSelector('input[name="email"]', { timeout: 10000 });
+    await page.type('input[name="email"]', email, { delay: 50 });
+    await page.type('input[name="pass"]', pass, { delay: 50 });
+    await page.evaluate(() => {
+      const btn = document.querySelector('input[type="submit"]') || document.querySelector('button[type="submit"]') || document.querySelector('[name="login"]');
+      if (btn) btn.click();
+    });
     await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 });
 
     // Check if login succeeded
