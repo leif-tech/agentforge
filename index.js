@@ -382,13 +382,13 @@ app.post('/api/outreach/preview', async (req,res) => {
 });
 
 app.post('/api/outreach/send', async (req,res) => {
-  const { id, emailAddress, sessionId, subject, body } = req.body;
+  const { id, emailAddress, sessionId, subject, body, force } = req.body;
   const f = findLead(id);
   if (!f) return res.status(404).json({ error:'Lead not found' });
   const { lead, index } = f;
   if (!emailAddress) return res.status(400).json({ error:'Email required' });
   if (!isValidEmail(emailAddress)) return res.status(400).json({ error:'Invalid email format' });
-  if (outreach.find(o=>o.leadId===id&&o.sentTo===emailAddress))
+  if (!force && outreach.find(o=>o.leadId===id&&o.sentTo===emailAddress))
     return res.status(400).json({ error:'Already sent to this address for this lead.' });
   // Prevent duplicate concurrent sends
   const lockKey = `${id}:${emailAddress}`;
