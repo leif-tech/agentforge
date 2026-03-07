@@ -135,7 +135,8 @@ Item 1 (the follow-up system) is the anchor. It must feel like the most valuable
 
 5. THE ASK
 - Exact framing: "All I need in return is 5-10 minutes."
-- Give two options: hop on a quick call, or just reply to this email.
+- One option only: hop on a quick call. The call is so we can learn what they want on the website and have a quick chat about their business.
+- Do NOT offer "or just reply to this email" as an alternative. Keep it to the call only.
 - Low pressure. No urgency theater. One door, left open.
 - 2 sentences max.
 
