@@ -442,7 +442,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   // Tracking pixel HTML
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: `Leif | WebForge <${RESEND_FROM}>`,
     to: emailAddress,
     subject: copy.subject,
@@ -473,8 +473,12 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     </table>`
   });
 
+  if (error) {
+    throw new Error(`Resend API error: ${error.message || JSON.stringify(error)}`);
+  }
+
   onProgress({ status: 'sent', message: `Sent to ${emailAddress} with 5 free deliverables` });
-  return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString() };
+  return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id };
 }
 
 // ── FOLLOW-UP EMAIL GENERATION ────────────────────────────────────────────
