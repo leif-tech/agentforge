@@ -343,16 +343,99 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     `;
   }
 
-  // Replace preview URL in body with click-tracked URL
+  // Replace preview URL in body with click-tracked URL and format email
   let bodyText = copy.body;
-  let bodyHtml = bodyText.split('\n').filter(l => l.trim()).map(l => {
+  const lines = bodyText.split('\n').filter(l => l.trim());
+  let bodyHtml = '';
+  let inList = false;
+  let listItems = [];
+
+  function flushList() {
+    if (!listItems.length) return '';
+    let html = '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px">';
+    listItems.forEach(item => {
+      const match = item.match(/^(\d+)\.\s*(.*)/);
+      const num = match ? match[1] : '';
+      const text = match ? match[2] : item;
+      html += `<tr>
+        <td style="width:28px;vertical-align:top;padding:6px 0">
+          <div style="width:22px;height:22px;background:#111;color:#fff;font-size:10px;font-weight:700;text-align:center;border-radius:50%;line-height:22px">${num}</div>
+        </td>
+        <td style="padding:5px 0 5px 10px;font-size:14px;line-height:1.6;color:#333">${text}</td>
+      </tr>`;
+    });
+    html += '</table>';
+    listItems = [];
+    inList = false;
+    return html;
+  }
+
+  for (const l of lines) {
     let line = l;
     if (trackingOpts?.clickUrl && previewUrl) {
       const escaped = previewUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
     }
-    return `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#222">${line}</p>`;
-  }).join('');
+
+    // Numbered list item
+    if (/^\d+\.\s/.test(line)) {
+      inList = true;
+      listItems.push(line);
+      continue;
+    }
+
+    // Flush pending list before next paragraph
+    if (inList) bodyHtml += flushList();
+
+    // URL-only line — render as a styled button/link
+    if (line.match(/^https?:\/\/\S+$/) && line.includes(previewUrl.split('/')[2])) {
+      const href = trackingOpts?.clickUrl || line;
+      bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px">
+        <tr><td>
+          <a href="${href}" style="display:inline-block;padding:12px 24px;background:#111;color:#fff;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:.02em">View Your Demo Website &rarr;</a>
+        </td></tr>
+        <tr><td style="padding:6px 0 0">
+          <a href="${href}" style="font-size:11px;color:#888;text-decoration:none;word-break:break-all">${line}</a>
+        </td></tr>
+      </table>`;
+      continue;
+    }
+
+    // Sign-off: "Leif" or "WebForge" alone
+    if (/^(Leif|WebForge)$/i.test(line.trim())) {
+      const isName = /^Leif$/i.test(line.trim());
+      bodyHtml += `<p style="margin:${isName ? '28px' : '0'} 0 ${isName ? '2px' : '0'};font-size:${isName ? '15px' : '12px'};font-weight:${isName ? '600' : '500'};color:${isName ? '#111' : '#888'};line-height:1.4;${isName ? '' : 'letter-spacing:.04em'}">${line.trim()}</p>`;
+      continue;
+    }
+
+    // "We also offer" or transition lines — subtle label style
+    if (/we also offer|and many more/i.test(line)) {
+      bodyHtml += `<p style="margin:24px 0 12px;font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em">${line}</p>`;
+      continue;
+    }
+
+    // "This demo is yours" / free website line — highlight
+    if (/demo.*yours|for free|no cost|your real site/i.test(line)) {
+      bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px">
+        <tr><td style="padding:14px 18px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0">
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#166534">${line}</p>
+        </td></tr>
+      </table>`;
+      continue;
+    }
+
+    // "All I need" / the ask — slightly emphasized
+    if (/all i need|5-10 minutes|hop on a quick call/i.test(line)) {
+      bodyHtml += `<p style="margin:24px 0 18px;font-size:15px;line-height:1.75;color:#111;font-weight:500">${line}</p>`;
+      continue;
+    }
+
+    // Default paragraph
+    bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${line}</p>`;
+  }
+
+  // Flush any remaining list
+  if (inList) bodyHtml += flushList();
 
   // Tracking pixel HTML
   const pixelHtml = trackingOpts?.pixelHtml || '';
