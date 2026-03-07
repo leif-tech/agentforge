@@ -294,7 +294,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
         <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
         <tr><td style="padding:28px 0 6px" colspan="2">
           <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your Free Deliverables</p>
-          <p style="font-size:12px;color:#888;margin:4px 0 0">Ready to use. Edit to match your tone, style, and preference.</p>
+          <p style="font-size:12px;color:#888;margin:4px 0 0">These are yours to keep. Tweak the wording, match your voice, and make them your own.</p>
         </td></tr>
 
         <tr><td style="padding:20px 0 0" colspan="2">
