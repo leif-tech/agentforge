@@ -103,11 +103,20 @@ EMAIL STRUCTURE - follow this exactly, in this order:
 - Use the niche-specific scenario above to make it concrete and real.
 - 2-3 sentences max.
 
-3. THE BRIDGE
-- Emphasize that we built them a DEMO website to prove what's possible. Make it clear this is just a demo, it can be changed and customized however they want, and we will build their real website for free.
-- Use phrasing like: "We built you a demo website to prove it." Then drop the URL.
-- Format: "We built you a demo website to prove it. ${previewUrl}"
-- Make sure the reader understands: this is a preview, not the final product. The real site is free.
+3. THE BRIDGE (pivot sentence)
+This is the single sentence that transitions from the problem to the offer. It carries the most weight in the email. If it's vague, the reader loses momentum right before the offer lands.
+
+PIVOT SENTENCE RULES:
+- Must close the loop on the exact problem described in The Flip above. Reference the specific loss or scenario you just painted.
+- Echo a specific word or phrase already used in the email (creates cohesion).
+- One sentence, punchy, no longer than 15 words.
+- NEVER use vague verbs like "prove it", "show it", "fix that", "change this" without a specific object. The reader should never have to guess what "it" refers to.
+- BAD: "We built you a demo website to prove it." (prove WHAT? vague antecedent)
+- GOOD: "We built you a demo website so people searching your name actually have somewhere to land."
+- GOOD: "We built you a demo site. Now that couple checking menus tonight can see yours."
+
+After the pivot sentence, drop the demo URL on its own line: ${previewUrl}
+Then clarify: this is just a demo, it can be changed and customized however they want, and we will build their real website for free.
 
 4. THE OFFER LIST
 - First, frame the demo website as the free offer:
