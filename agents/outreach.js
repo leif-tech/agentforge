@@ -140,12 +140,22 @@ Leif
 WebForge
 
 SUBJECT LINE RULES:
-- 5-9 words. Short enough to read on a phone lock screen.
-- Must create a curiosity gap or tension. Make them think "wait, what?"
-- Must be specific to THIS business (use their name, niche, review count, or location).
-- NEVER describe what the email contains. NEVER pitch in the subject line.
-- No emojis. No exclamation marks. No periods at the end. No ALL CAPS.
+- Use the business's actual review count as an anchor. It makes the email feel researched, not mass-blasted.
+- Imply a problem or gap without being clickbait-y or alarmist.
+- Under 60 characters so it reads fully in email preview panes.
+- Create curiosity OR mild tension, ideally both.
+- Prefer concrete contrast over vague statements (e.g., "reviews vs. no website" not "missing out").
+- Winning formula (tested): [Review count]. [Consequence they're experiencing].
+  Example: "${reviews} reviews. Still losing clicks to competitors."
+- Must be specific to THIS business. Use their review count (${reviews}), name (${lead.name}), or niche (${type}).
+- No emojis. No exclamation marks. No ALL CAPS. No spam trigger words.
 - BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
+
+Generate 3 subject line options internally, ranked by curiosity score:
+- Safe: lowest risk, still curiosity-driven
+- Punchy: stronger tension, concrete contrast
+- Bold: most provocative, highest open potential
+Then pick the BEST one (Punchy or Bold preferred) and use it as the subject in your JSON output.
 
 HARD RULES:
 - No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
