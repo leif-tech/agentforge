@@ -27,141 +27,132 @@ function buildEmailPrompt(lead, previewUrl, type) {
   const hasRating = lead.rating && lead.rating !== 'N/A';
   const rating = parseFloat(lead.rating) || 0;
   const reviews = parseInt(lead.reviews) || 0;
-  const ratingInfo = hasRating ? `${lead.rating}/5 stars with ${reviews} Google reviews` : 'not yet rated on Google';
 
   // Rating-aware hook guidance
   let ratingGuidance;
   if (!hasRating) {
-    ratingGuidance = `This business has no Google rating yet. Do NOT mention stars or reviews. Instead, hook on something specific to their niche, location, or the fact that they clearly have a physical presence people visit. Frame the gap as: people can't find what they don't know exists.`;
+    ratingGuidance = `No rating: do not mention stars. Hook on their niche or location presence.`;
   } else if (rating >= 4.5) {
-    ratingGuidance = `Exceptional rating (${lead.rating} stars, ${reviews} reviews). This is genuinely impressive. Use it as the hook, then flip it: all that trust is locked inside Google and goes nowhere. Their best customers are doing the marketing for them, but new people searching online hit a dead end.`;
+    ratingGuidance = `4.5 and above (${lead.rating} stars, ${reviews} reviews): use the rating as the hook. Flip it ("all that trust is locked inside Google with nowhere to go").`;
   } else if (rating >= 4.0) {
-    ratingGuidance = `Strong rating (${lead.rating} stars, ${reviews} reviews). Solid but not extraordinary. Don't oversell it with "most businesses would kill for this." Instead, treat it as proof they're doing good work, then flip: the people leaving those reviews can't send friends anywhere except a Google listing.`;
+    ratingGuidance = `4.0 to 4.5 (${lead.rating} stars, ${reviews} reviews): solid reputation but don't oversell it. Flip on "no place to send people who hear about you".`;
   } else {
-    ratingGuidance = `Moderate rating (${lead.rating} stars, ${reviews} reviews). Do NOT hype the rating. Do NOT say "most businesses would kill for this" because 3.8 stars isn't remarkable. Instead, hook on their niche, their location, or how long they've been around. Frame the gap differently: a proper web presence lets them control the narrative instead of letting Google reviews tell their whole story.`;
+    ratingGuidance = `Below 4.0 (${lead.rating} stars, ${reviews} reviews): skip rating entirely. Hook on niche, longevity, or what they actually do well.`;
   }
 
-  // Niche-specific flip examples so Claude doesn't use the same one every time
+  // Niche-specific flip examples
   const nicheFlips = {
-    cafe: "Someone craving a good coffee spot nearby googles you, sees the rating, but can't find a menu, the vibe, or whether you're even open right now. They pick the cafe with the website instead.",
-    restaurant: "A friend tells someone to try your food. They search your name. No menu. No photos of the space. No reservations link. They end up at the place down the street that had all of that ready.",
-    beauty_salon: "A client tells her friend about you. That friend searches your name. No portfolio. No booking link. No way to see your work. She books with the salon that showed up with photos and an online scheduler.",
-    auto_repair: "Someone's car breaks down. A neighbor says 'go to ${lead.name}.' They google you. No website. No services listed. No way to know if you handle their car. So they call the shop that had everything laid out online.",
-    yoga_studio: "Someone wants to try yoga. A coworker mentions your studio. They look you up. No class schedule. No pricing. No sense of what walking in feels like. They sign up for the studio that made it easy.",
-    gym: "Someone's looking for a new gym. A friend recommends you. They search your name and find a Google listing. No tour of the space, no membership info, no sense of the culture. They join the gym that showed them everything upfront.",
-    barbershop: "A guy asks his buddy where he gets his cut. Buddy says '${lead.name}.' He googles it. No photos of your work. No way to book. He walks into the shop with the Instagram feed and online booking.",
-    roofer: "A homeowner notices a leak. They ask around, someone mentions your name. They google you. No photos of past jobs. No list of services. No way to request an estimate. They call the roofer whose website had before-and-after photos and a quote form.",
-    landscaper: "A homeowner wants their yard done. A neighbor says to call you. They search your name. No portfolio. No pricing. No gallery of past projects. They hire the landscaper who showed them what the finished product looks like.",
-    pool_cleaner: "A homeowner needs pool service. They google your name. No service packages, no pricing, no way to schedule. They go with the company that had everything laid out and a booking button.",
-    pest_control: "Someone finds termites. A friend recommends you. They search your name. No website. No services listed. No way to book an inspection. They call the pest company that had online scheduling and showed exactly what they handle.",
-    wedding_officiant: "A couple is planning their wedding. Someone mentions your name. They google you. No photos from past ceremonies. No reviews page. No way to learn about your style. They book the officiant with the website that felt personal and trustworthy.",
-    tailor: "Someone needs a suit altered for a wedding. A coworker recommends you. They search your name. No photos of your work. No pricing. No sense of what you specialize in. They walk into the tailor with the polished online presence.",
-    massage_therapist: "Someone's back is killing them. A friend says to try you. They google your name. No service menu. No booking link. No way to see what you offer. They book with the therapist who had online scheduling and a clean website.",
-    photographer: "Someone needs photos for an event. A friend mentions your name. They search you. No portfolio. No gallery of past work. No way to see your style or book a session. They hire the photographer whose website showed exactly what they'd get.",
-    default: "Someone hears about you. They search your name. And all they find is a Google listing with an address and a phone number. No story, no details, no reason to choose you over the next result. So they don't."
+    cafe: `Someone hears about their cortado from a friend, searches the name, finds no website, clicks the competitor down the street instead.`,
+    coffee: `Someone hears about their cortado from a friend, searches the name, finds no website, clicks the competitor down the street instead.`,
+    restaurant: `A couple is choosing where to eat tonight. No menu online, no photos. They pick somewhere else.`,
+    salon: `A woman asks her friend where she got her cut. She searches the name. Nothing comes up that looks real. She books somewhere else.`,
+    hair: `A woman asks her friend where she got her cut. She searches the name. Nothing comes up that looks real. She books somewhere else.`,
+    auto: `Someone's car is making a noise. They search the shop name. No site. Looks closed or sketchy. They go to a chain.`,
+    yoga: `Someone just moved to the area. They search for yoga nearby. The listing has no class schedule, no vibe. They try the next one.`,
+    fitness: `Someone just moved to the area. They search for fitness nearby. The listing has no class schedule, no vibe. They try the next one.`,
+    gym: `A guy is ready to sign up. He searches, finds no site, can't see pricing or equipment. He signs up at the gym that had a website.`,
+    barbershop: `A dad wants a reliable spot for his son. He searches, finds just an address. No photos, no booking. He goes somewhere that looked more legit.`,
+    barber: `A dad wants a reliable spot for his son. He searches, finds just an address. No photos, no booking. He goes somewhere that looked more legit.`,
+    roofer: `A homeowner needs a quote. They found the name through a neighbor. No website. Looks unverified. They call someone else.`,
+    contractor: `A homeowner needs a quote. They found the name through a neighbor. No website. Looks unverified. They call someone else.`,
+    nail: `Someone wants to check the vibe before booking. No photos, no site. They book somewhere they could actually see first.`,
+    bakery: `Someone heard about the sourdough. They search the name. Just a map pin. No photos, no story. They scroll to the next result.`,
+    florist: `A guy needs flowers for an anniversary. No site, no gallery of arrangements. He orders from someone with photos.`,
+    flower: `A guy needs flowers for an anniversary. No site, no gallery of arrangements. He orders from someone with photos.`,
+    massage: `A woman wants to treat herself. She searches, finds only a phone number. Feels unsure. Books somewhere with a real site.`,
+    spa: `A woman wants to treat herself. She searches, finds only a phone number. Feels unsure. Books somewhere with a real site.`,
+    dentist: `A family just moved in. They search for a dentist. No website, no info about the team. They pick the one that looked established.`,
+    vet: `A new pet owner is nervous. They search local vets. One has a site with the doctor's photo and approach. They call that one.`,
+    cleaning: `A homeowner wants to hire cleaners. They found the name through a neighbor. No site, no proof of work. They Google someone else.`,
+    default: `Someone hears about them. They search the name. Just a Google listing with an address and a phone number. No story, no details. They pick the next result.`
   };
   const nicheKey = Object.keys(nicheFlips).find(k => type.toLowerCase().includes(k)) || 'default';
   const flipExample = nicheFlips[nicheKey];
 
-  return `You are writing a cold outreach email from Leif to the owner of "${lead.name}", a ${type} at ${lead.address}.
-Google rating: ${ratingInfo}.
-Demo site Leif already built for them (for free, before reaching out): ${previewUrl}
+  return `You are writing a cold outreach email on behalf of Leif from WebForge.
 
----
+CONTEXT:
+- Business name: ${lead.name}
+- Business type: ${type}
+- Address: ${lead.address}
+- Rating: ${hasRating ? lead.rating : 'no rating'}
+- Number of reviews: ${reviews}
+- Demo site URL: ${previewUrl}
 
-YOUR ROLE:
-You write cold emails that make local business owners suddenly feel a gap they hadn't noticed. Not by pitching. Not by listing features. By showing them what they're losing right now, today, by not having a website.
+PSYCHOLOGY DIRECTIVES:
+- Surface discomfort. People act on loss, not opportunity.
+- Reciprocity: Leif already built them a free demo site. He gave first.
+- Curiosity gap in the subject line. Make them need to open it.
+- Prize frame: this email feels personal and hand-written, not a blast.
 
-PSYCHOLOGY TO APPLY:
-- People act on discomfort, not opportunity. Surface the discomfort.
-- Reciprocity: Leif already built something for free before asking anything. That changes the dynamic. He gave first.
-- Curiosity gap: The subject line should make them NEED to open it. Create an open loop their brain wants to close.
-- Prize frame: Leif chose this business specifically. He's not blasting 500 people. This is personal.
-- The reader should finish the email feeling like NOT replying is the wrong move.
-
----
-
-RATING-SPECIFIC GUIDANCE:
+RATING-AWARE HOOK GUIDANCE:
 ${ratingGuidance}
 
----
-
-NICHE-SPECIFIC FLIP (use this as inspiration, but rewrite it in your own words, do NOT copy it verbatim):
+NICHE-SPECIFIC FLIP EXAMPLE (use as inspiration, rewrite in your own words):
 "${flipExample}"
 
----
+EMAIL STRUCTURE - follow this exactly, in this order:
 
-EMAIL STRUCTURE (follow this exact order):
+1. HOOK
+- First line only. Start with "You" or "Your". Never start with "Hi" or any greeting.
+- Make one specific, true observation about their business (use rating, reviews, niche, or location).
+- Keep it to 1-2 sentences max.
 
-1. HOOK (1-2 sentences)
-Start with "You" or "Your", never "I" or "Hi" or "Hey". One sharp, specific observation about their business that shows Leif actually looked them up. Must feel personal, not templated.
-BAD: "${lead.rating} stars. ${reviews} reviews. That's rare." (this is generic)
-GOOD: "Your ${type} has ${reviews} people vouching for it on Google. That's not luck, that's years of showing up."
-The hook must feel different every time. Do NOT start with just the star rating and review count as a standalone sentence.
+2. THE FLIP
+- Turn their strength into a tangible loss. Show them what is slipping through the cracks right now.
+- Use the niche-specific scenario above to make it concrete and real.
+- 2-3 sentences max.
 
-2. THE FLIP (2-3 sentences)
-Turn their strength into a specific, tangible loss. Be concrete about what's happening right now. Paint a scene the owner can picture. What does the customer do? Where do they go instead? Make it hurt, but in a way that feels honest, not manipulative.
-CRITICAL: The flip must be specific to their type of business (${type}). Do NOT use a generic "all that trust lives on Google" for every business.
-
-3. THE BRIDGE (1 sentence)
-One short line connecting the problem to the solution. Then the demo link on its own line:
-${previewUrl}
+3. THE BRIDGE
+- One short line acknowledging what they have built, then drop the demo URL.
+- Format: "[One line observation]. ${previewUrl}"
 
 4. THE OFFER LIST
-Introduce with: "Here's what's yours to keep, no charge:"
-Then numbered list (1-5), one line each. No fluff:
+- Intro line: "Here's what's yours to keep, no charge:"
+- Then list all 5 items exactly as follows:
+
 1. The live demo website above, fully built out and ready to go live (I'll make it your real site for free)
-2. A ready-to-post Instagram caption written for their ${type}
-3. A professional response template for their Google reviews
-4. An automated customer follow-up system via text message or social media
-5. A full audit of their online presence, socials, and search visibility
+2. A ready-to-post Instagram caption written for your ${type}
+3. A professional response template for your Google reviews
+4. An automated customer follow-up system via text message or social media, this one runs while you sleep
+5. A full audit of your online presence, socials, and search visibility
 
-5. THE ASK (exact wording, do not change)
-"All I need in return is 5-10 minutes. Either hop on a quick call so I can hear what you're actually dealing with, or just reply to this email and tell me what's been a headache."
-Use this EXACTLY as written. Do not rephrase, shorten, or reword it.
+IMPORTANT: Only item 1 is truly free. Items 2-5 are services we can provide. Do not frame them as free. Let the list speak for itself.
+Item 4 is the anchor. It must feel like the most valuable thing on the list.
 
-6. CLOSING LINE (1 sentence)
-One sentence that reframes the whole email. Give them credit. Make the next step feel obvious.
-CRITICAL: Do NOT use "You've already done the hard part." That's banned. Write something original that is specific to this business and niche. Each email should end differently.
-BAD (banned, never use): "You've already done the hard part. You've built something people love. Let's make sure they can actually find it."
-GOOD: "The food already speaks for itself. This just makes sure more people hear it."
-GOOD: "You don't need more talent. You need more people to see it."
+5. THE ASK
+- Exact framing: "All I need in return is 5-10 minutes."
+- Give two options: hop on a quick call, or just reply to this email.
+- Low pressure. No urgency theater. One door, left open.
+- 2 sentences max.
+
+6. CLOSING LINE
+- One original line. Niche-specific. Must feel human.
+- BANNED phrase: "You've already done the hard part"
+- Do not summarize. Do not repeat anything already said. Just land it.
 
 7. SIGN-OFF
-"Leif" on one line. "WebForge" on the next. Nothing else. No titles, no phone, no links.
-
----
+Leif
+WebForge
 
 SUBJECT LINE RULES:
-The subject line is everything. If they don't open it, nothing else matters.
 - 5-9 words. Short enough to read on a phone lock screen.
-- Must create a curiosity gap or tension. The reader should think "wait, what?" and need to open it.
+- Must create a curiosity gap or tension. Make them think "wait, what?"
 - Must be specific to THIS business (use their name, niche, review count, or location).
 - NEVER describe what the email contains. NEVER pitch in the subject line.
 - No emojis. No exclamation marks. No periods at the end. No ALL CAPS.
 - BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
 
-Subject line formulas that get opened:
-- Curiosity gap: "${reviews} people left you reviews, then what"
-- Implied loss: "your best customers can't find you"
-- Pattern interrupt: "${lead.name} without a website in 2026"
-- Specific + tension: "${reviews} five-star reviews going nowhere"
-- Provocative question: "what happens after someone googles ${lead.name}"
-
----
-
-HARD RULES (violating any of these = failure):
-- NEVER use em dashes (—) anywhere in subject or body. Use commas, periods, or line breaks instead. This is critical.
-- NEVER use exclamation marks.
-- NEVER use semicolons.
-- NEVER start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
+HARD RULES:
+- No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
+- No exclamation marks. No semicolons.
+- Never start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
 - First word of the email must be "You" or "Your".
-- NEVER say: "I hope this finds you well", "synergy", "leverage", "solutions", "partnership", "opportunity", "game-changer", "next level", "stand out", "competitive edge"
-- NEVER reuse the same closing line across emails. Each must be unique and niche-specific.
+- BANNED words: "synergy", "leverage", "solutions", "partnership", "opportunity", "game-changer", "next level", "stand out", "competitive edge"
+- Each closing line must be unique and niche-specific. Never reuse across emails.
 - Under 150 words for the body (before the offer list). Total email under 200 words.
 - No pricing anywhere.
-- Write like a person texting a friend about something they noticed, not like a company writing marketing copy.
-- The email should feel slightly imperfect, human, real. Not polished corporate prose.
+- Must feel like a human wrote it, slightly imperfect, not polished AI copy.
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
