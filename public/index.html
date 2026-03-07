@@ -680,7 +680,11 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div class="ss">
       <div class="lbl">Send Outreach</div>
       <div class="f"><span>Select Lead</span>
-        <select id="o-lead" onchange="oChg()"><option value="">— Select a lead —</option></select>
+        <div style="position:relative" id="o-lead-wrap">
+          <input type="text" id="o-lead-search" placeholder="Search leads..." autocomplete="off" oninput="filterLeadDrop()" onfocus="openLeadDrop()" style="width:100%;padding:7px 10px;font-size:12px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s" onfocusin="this.style.borderColor='var(--cyan)'" onfocusout="setTimeout(()=>{closeLeadDrop()},180)">
+          <div id="o-lead-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:var(--s1);border:1px solid rgba(255,255,255,.12);border-top:none;border-radius:0 0 8px 8px;z-index:50"></div>
+          <input type="hidden" id="o-lead" value="">
+        </div>
       </div>
       <div class="f"><span>Recipient Email</span><input type="email" id="o-email" placeholder="owner@business.com"></div>
       <div class="hint" id="o-hint" onclick="useEmail()">💡 Use found email: <span id="o-hint-v"></span></div>
@@ -1284,17 +1288,39 @@ function prevSite(id){
   document.getElementById('site-link').href=publicUrl||localUrl;
   document.getElementById('site-ov').classList.add('on');
 }
-function goOutreach(){closeOv('site-ov');go('outreach');if(siteLead!=null){document.getElementById('o-lead').value=siteLead;oChg();}
+function goOutreach(){closeOv('site-ov');go('outreach');if(siteLead!=null){pickLead(siteLead);}
 
 }
 
 // ── OUTREACH ──────────────────────────────────────────────────────────────
 function fillSels(){
-  const o=document.getElementById('o-lead'),c=document.getElementById('c-lead'),co=o.value,cc=c.value;
+  const o=document.getElementById('o-lead'),c=document.getElementById('c-lead'),cc=c.value;
   const opts=leads.map(l=>`<option value="${l.id}">${l.name}${l.siteFile?' ✓':''}</option>`).join('');
-  o.innerHTML='<option value="">— Select a lead —</option>'+opts;
   c.innerHTML='<option value="">— Select a lead —</option>'+opts;
-  if(co)o.value=co;if(cc)c.value=cc;
+  if(cc)c.value=cc;
+  renderLeadDrop();
+}
+function renderLeadDrop(filter){
+  const list=document.getElementById('o-lead-list');
+  const q=(filter||'').toLowerCase();
+  const filtered=q?leads.filter(l=>(l.name||'').toLowerCase().includes(q)||(l.type||'').toLowerCase().replace(/_/g,' ').includes(q)||(l.address||'').toLowerCase().includes(q)):leads;
+  if(!filtered.length){list.innerHTML='<div style="padding:10px 12px;font-size:11px;color:var(--t4)">No leads found</div>';return;}
+  list.innerHTML=filtered.map(l=>{
+    const hasSite=l.siteFile;
+    const hasEmail=l.foundEmail;
+    const tags=(hasSite?'<span style="color:var(--cyan);font-size:9px;margin-left:4px">SITE</span>':'')+(hasEmail?'<span style="color:var(--green);font-size:9px;margin-left:4px">EMAIL</span>':'');
+    return `<div class="ld-item" onmousedown="pickLead('${l.id}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;display:flex;align-items:center;justify-content:space-between" onmouseenter="this.style.background='rgba(255,255,255,.07)'" onmouseleave="this.style.background='none'"><div><div style="font-size:11.5px;color:var(--t1);font-weight:500">${x(l.name)}</div><div style="font-size:9.5px;color:var(--t4);margin-top:1px">${x(l.address||'')}</div></div><div>${tags}</div></div>`;
+  }).join('');
+}
+function openLeadDrop(){const list=document.getElementById('o-lead-list');list.style.display='block';renderLeadDrop(document.getElementById('o-lead-search').value);}
+function closeLeadDrop(){document.getElementById('o-lead-list').style.display='none';}
+function filterLeadDrop(){const q=document.getElementById('o-lead-search').value;document.getElementById('o-lead-list').style.display='block';renderLeadDrop(q);}
+function pickLead(id){
+  document.getElementById('o-lead').value=id;
+  const l=leads.find(x=>x.id===id);
+  document.getElementById('o-lead-search').value=l?l.name:'';
+  closeLeadDrop();
+  oChg();
 }
 function oChg(){
   document.getElementById('o-prev-box').style.display='none';
