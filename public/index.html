@@ -651,6 +651,10 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
         <button class="ab v" onclick="go('outreach')">→ Outreach</button>
       </div>
     </div>
+    <div style="padding:0 18px 10px;display:flex;align-items:center;gap:8px">
+      <input type="text" id="b-search" placeholder="Search businesses by name, type, or address..." oninput="drawB()" style="flex:1;padding:8px 12px;font-size:12px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);color:var(--t1);outline:none;transition:border .2s" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='var(--bd)'">
+      <button class="ab" onclick="document.getElementById('b-search').value='';drawB()" style="font-size:10px;white-space:nowrap">Clear</button>
+    </div>
     <div class="tw">
       <div class="empty" id="b-e"><div class="ei">🏗️</div><div class="et">No Leads Yet</div><div class="es">Run Scout first</div></div>
       <table id="b-tbl" style="display:none">
@@ -1226,9 +1230,11 @@ async function loadCreds(){
 // ── BUILDER ───────────────────────────────────────────────────────────────
 function drawB(){
   const e=document.getElementById('b-e'),t=document.getElementById('b-tbl');
-  if(!leads.length){e.style.display='flex';t.style.display='none';return;}
+  const sq=(document.getElementById('b-search')?.value||'').trim().toLowerCase();
+  const filtered=sq?leads.filter(l=>(l.name||'').toLowerCase().includes(sq)||(l.type||'').toLowerCase().replace(/_/g,' ').includes(sq)||(l.address||'').toLowerCase().includes(sq)||(l.status||'').toLowerCase().includes(sq)):leads;
+  if(!filtered.length){e.style.display='flex';e.querySelector('.et').textContent=sq?'No Matches':'No Leads Yet';e.querySelector('.es').textContent=sq?'Try a different search term':'Run Scout first';t.style.display='none';return;}
   e.style.display='none';t.style.display='table';
-  const groups=groupByLocation(leads);
+  const groups=groupByLocation(filtered);
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
@@ -1245,6 +1251,7 @@ function drawB(){
   }
   document.getElementById('b-body').innerHTML=html;
   document.getElementById('b-sel-txt').textContent=bSel.size+' selected';
+  document.getElementById('b-badge').textContent=sq?filtered.length+'/'+leads.length+' leads':leads.length+' leads';
 }
 function bTog(id,c){c?bSel.add(id):bSel.delete(id);document.getElementById('b-sel-txt').textContent=bSel.size+' selected';}
 function bTogAll(c){bSel.clear();if(c)leads.forEach(l=>bSel.add(l.id));drawB();}
