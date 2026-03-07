@@ -28,7 +28,10 @@ function extractEmails(text) {
   const matches = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [];
   const blacklist = ['facebook.com','fb.com','sentry.io','example.com','wixpress.com','googleapis.com',
     'w3.org','schema.org','fbcdn.net','instagram.com','yelp.com','google.com','twitter.com',
-    'pinterest.com','youtube.com','linkedin.com','tiktok.com','meta.com'];
+    'pinterest.com','youtube.com','linkedin.com','tiktok.com','meta.com',
+    'noreply.com','notifications.com','no-reply.com','mailinator.com','tempmail.com',
+    'guerrillamail.com','sharklasers.com','grr.la','apple.com','microsoft.com',
+    'squarespace.com','wix.com','godaddy.com','wordpress.com','shopify.com'];
   return [...new Set(matches)].filter(e => {
     const domain = e.split('@')[1].toLowerCase();
     return !blacklist.some(b => domain.includes(b)) && e.length < 60;
@@ -216,7 +219,11 @@ async function findEmailFromFacebook(lead, onProgress) {
 
 // Log into Instagram once, reuse session across scrapes
 async function ensureIgLogin(browser, onProgress) {
-  if (igLoggedIn) return true;
+  // Verify browser is still connected before trusting cached login
+  if (igLoggedIn && browser.connected) return true;
+  if (igLoggedIn && !browser.connected) {
+    igLoggedIn = false; // Browser was disconnected, need to re-login
+  }
   const email = process.env.FB_EMAIL;
   const pass = process.env.FB_PASSWORD;
   if (!email || !pass) return false;
@@ -445,21 +452,40 @@ async function hunterSearch(lead, onProgress) {
 // Main findEmail pipeline: Facebook slug guess → Instagram slug guess → Website
 async function findEmail(lead, onProgress) {
   onProgress && onProgress({ status:'searching', message:`🔎 Finding email for ${lead.name}...` });
+  const sources = [];
 
   // Step 1: Find + scrape Facebook page (slug guessing → Puppeteer scrape, no login needed)
-  const fb = await findEmailFromFacebook(lead, onProgress);
-  if (fb) { markSearched(lead); return fb; }
+  try {
+    const fb = await findEmailFromFacebook(lead, onProgress);
+    if (fb) { markSearched(lead); return fb; }
+    sources.push('Facebook: no email found');
+  } catch(e) {
+    sources.push(`Facebook: error (${e.message})`);
+    onProgress && onProgress({ status:'error', message:`⚠ Facebook search failed: ${e.message}` });
+  }
 
   // Step 2: Find + scrape Instagram page (slug guessing → Puppeteer scrape, needs IG login)
-  const ig = await findEmailFromInstagram(lead, onProgress);
-  if (ig) { markSearched(lead); return ig; }
+  try {
+    const ig = await findEmailFromInstagram(lead, onProgress);
+    if (ig) { markSearched(lead); return ig; }
+    sources.push('Instagram: no email found');
+  } catch(e) {
+    sources.push(`Instagram: error (${e.message})`);
+    onProgress && onProgress({ status:'error', message:`⚠ Instagram search failed: ${e.message}` });
+  }
 
   // Step 3: Try website if available (usually not, since scout filters for no-website leads)
-  const web = await findEmailFromWebsite(lead, onProgress);
-  if (web) { markSearched(lead); return web; }
+  try {
+    const web = await findEmailFromWebsite(lead, onProgress);
+    if (web) { markSearched(lead); return web; }
+    sources.push('Website: no email found');
+  } catch(e) {
+    sources.push(`Website: error (${e.message})`);
+    onProgress && onProgress({ status:'error', message:`⚠ Website search failed: ${e.message}` });
+  }
 
   markSearched(lead);
-  onProgress && onProgress({ status:'not_found', message:`❌ No email found for ${lead.name}` });
+  onProgress && onProgress({ status:'not_found', message:`❌ No email found for ${lead.name} (checked: ${sources.join('; ')})` });
   return null;
 }
 

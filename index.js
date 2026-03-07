@@ -139,6 +139,14 @@ function findLead(id) {
   return index >= 0 ? { lead: leads[index], index } : null;
 }
 
+// Lock to prevent duplicate concurrent sends to the same lead
+const sendingInProgress = new Set();
+
+// Simple email format validation
+function isValidEmail(email) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
+}
+
 // ── TRACKING ROUTES (before auth — email clients need access) ────────────
 const PIXEL_BUF = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
@@ -284,9 +292,19 @@ app.post('/api/emailfinder/hunter', async (req,res) => {
   } catch(e) { emit(sessionId, { type:'error', agent:'emailfinder', message:e.message }); }
 });
 
+let hunterCreditsCache = null;
+let hunterCreditsCacheTime = 0;
 app.get('/api/emailfinder/credits', async (req,res) => {
-  try { res.json({ credits: await checkCredits() }); }
-  catch(e) { res.status(500).json({ error:e.message }); }
+  try {
+    const now = Date.now();
+    if (hunterCreditsCache && now - hunterCreditsCacheTime < 5 * 60 * 1000) {
+      return res.json({ credits: hunterCreditsCache });
+    }
+    const credits = await checkCredits();
+    hunterCreditsCache = credits;
+    hunterCreditsCacheTime = now;
+    res.json({ credits });
+  } catch(e) { res.status(500).json({ error:e.message }); }
 });
 
 // ── BUILDER ───────────────────────────────────────────────────────────────
@@ -369,22 +387,29 @@ app.post('/api/outreach/send', async (req,res) => {
   if (!f) return res.status(404).json({ error:'Lead not found' });
   const { lead, index } = f;
   if (!emailAddress) return res.status(400).json({ error:'Email required' });
+  if (!isValidEmail(emailAddress)) return res.status(400).json({ error:'Invalid email format' });
   if (outreach.find(o=>o.leadId===id&&o.sentTo===emailAddress))
     return res.status(400).json({ error:'Already sent to this address for this lead.' });
+  // Prevent duplicate concurrent sends
+  const lockKey = `${id}:${emailAddress}`;
+  if (sendingInProgress.has(lockKey))
+    return res.status(409).json({ error:'Email is already being sent to this lead. Please wait.' });
+  sendingInProgress.add(lockKey);
   res.json({ status:'started' });
   emit(sessionId, { type:'outreach', status:'start', message:`📧 Preparing email for ${lead.name}...` });
   try {
-    // Create tracking record
+    // Prepare tracking (but don't save until send succeeds)
     const trackingId = randomUUID();
     const previewUrl = lead.previewUrl||getBase();
-    const trackRec = { trackingId, leadId:id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() };
-    tracking.push(trackRec); save(TF, tracking);
     const trackingOpts = {
       pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
       clickUrl: `${getBase()}/c/${trackingId}`
     };
 
     const result = await sendOutreach(lead, previewUrl, emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body, trackingOpts);
+    // Only create tracking record AFTER successful send
+    const trackRec = { trackingId, leadId:id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() };
+    tracking.push(trackRec); save(TF, tracking);
     outreach.push({ leadId:id, lead:lead.name, ...result });
     save(OF,outreach);
     leads[index].status='Outreach Sent';
@@ -396,6 +421,8 @@ app.post('/api/outreach/send', async (req,res) => {
   } catch(e) {
     emit(sessionId, { type:'outreach', status:'error', message:`❌ Failed: ${e.message}` });
     emit(sessionId, { type:'error', agent:'outreach', message:e.message });
+  } finally {
+    sendingInProgress.delete(lockKey);
   }
 });
 
@@ -414,15 +441,21 @@ app.post('/api/outreach/batch', async (req,res) => {
     const email = lead.foundEmail;
     emit(sessionId, { type:'outreach_batch', status:'sending', message:`[${i+1}/${targets.length}] Sending to ${lead.name} (${email})...`, progress: Math.round((i/targets.length)*100) });
     try {
+      if (!isValidEmail(email)) {
+        emit(sessionId, { type:'outreach_batch', status:'error', message:`❌ ${lead.name}: Invalid email format (${email})` });
+        failed++;
+        continue;
+      }
       const trackingId = randomUUID();
       const previewUrl = lead.previewUrl||getBase();
-      tracking.push({ trackingId, leadId:lead.id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
-      save(TF, tracking);
       const trackingOpts = {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
       };
       const result = await sendOutreach(lead, previewUrl, email, () => {}, null, null, trackingOpts);
+      // Only create tracking record AFTER successful send
+      tracking.push({ trackingId, leadId:lead.id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
+      save(TF, tracking);
       outreach.push({ leadId:lead.id, lead:lead.name, ...result });
       save(OF, outreach);
       leads[index].status='Outreach Sent';
@@ -459,17 +492,22 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
     try {
       const prevOutreach = outreach.find(o => o.leadId === lead.id);
       const prevFollowUps = outreach.filter(o => o.leadId === lead.id && o.type === 'followup').length;
+      if (prevFollowUps >= 3) {
+        emit(sessionId, { type:'followup_batch', status:'skipped', message:`⏭ ${lead.name}: Already sent 3 follow-ups` });
+        continue;
+      }
       const step = Math.min(prevFollowUps + 1, 3);
       const followUp = await generateFollowUpEmail(lead, step, prevOutreach?.subject || 'Your demo website');
       const trackingId = randomUUID();
       const previewUrl = lead.previewUrl||getBase();
-      tracking.push({ trackingId, leadId:lead.id, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
-      save(TF, tracking);
       const trackingOpts = {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
       };
       const result = await sendOutreach(lead, previewUrl, email, ()=>{}, followUp.subject, followUp.body, trackingOpts);
+      // Only create tracking record AFTER successful send
+      tracking.push({ trackingId, leadId:lead.id, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
+      save(TF, tracking);
       outreach.push({ leadId:lead.id, lead:lead.name, type:'followup', ...result });
       save(OF, outreach);
       sent++;
@@ -491,6 +529,7 @@ app.post('/api/outreach/schedule', (req,res) => {
   const f = findLead(id);
   if (!f) return res.status(404).json({ error:'Lead not found' });
   if (!emailAddress || !sendAt) return res.status(400).json({ error:'Email and sendAt required' });
+  if (!isValidEmail(emailAddress)) return res.status(400).json({ error:'Invalid email format' });
   const rec = { id:randomUUID(), leadId:id, emailAddress, subject:subject||'', body:body||'', sendAt, status:'pending', createdAt:new Date().toISOString() };
   scheduled.push(rec); save(SCH_F, scheduled);
   res.json({ ok:true, scheduled:rec });
@@ -516,13 +555,14 @@ app.post('/api/scheduled/process', async (req,res) => {
     try {
       const trackingId = randomUUID();
       const previewUrl = f.lead.previewUrl||getBase();
-      tracking.push({ trackingId, leadId:s.leadId, type:'scheduled', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
-      save(TF, tracking);
       const trackingOpts = {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
       };
       const result = await sendOutreach(f.lead, previewUrl, s.emailAddress, ()=>{}, s.subject||null, s.body||null, trackingOpts);
+      // Only create tracking record AFTER successful send
+      tracking.push({ trackingId, leadId:s.leadId, type:'scheduled', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
+      save(TF, tracking);
       outreach.push({ leadId:s.leadId, lead:f.lead.name, ...result });
       save(OF, outreach);
       leads[f.index].status='Outreach Sent';
@@ -595,12 +635,13 @@ app.post('/api/sequences/process', async (req,res) => {
         const followUp = await generateFollowUpEmail(f.lead, step.step, prevOutreach?.subject || 'Your demo website');
         const trackingId = randomUUID();
         const previewUrl = f.lead.previewUrl||getBase();
-        tracking.push({ trackingId, leadId:seq.leadId, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
         const trackingOpts = {
           pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
           clickUrl: `${getBase()}/c/${trackingId}`
         };
         await sendOutreach(f.lead, previewUrl, emailAddr, ()=>{}, followUp.subject, followUp.body, trackingOpts);
+        // Only create tracking record AFTER successful send
+        tracking.push({ trackingId, leadId:seq.leadId, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
         step.status='sent'; step.sentAt=new Date().toISOString();
         sent++;
         emit(sessionId, { type:'sequence_sent', leadId:seq.leadId, step:step.step, message:`✅ Follow-up ${step.step}/3 sent to ${f.lead.name}` });

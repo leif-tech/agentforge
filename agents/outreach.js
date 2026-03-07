@@ -18,6 +18,8 @@ function cleanCopy(obj) {
   for (const key of Object.keys(obj)) {
     if (typeof obj[key] === 'string') {
       obj[key] = obj[key].replace(/\s*—\s*/g, ', ').replace(/,,/g, ',');
+    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+      cleanCopy(obj[key]);
     }
   }
   return obj;
@@ -182,13 +184,43 @@ Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
 }
 
+async function callAnthropicWithTimeout(client, params, timeoutMs = 60000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const msg = await client.messages.create(params, { signal: controller.signal });
+    return msg;
+  } catch(e) {
+    if (e.name === 'AbortError' || e.message?.includes('abort')) {
+      throw new Error('Anthropic API timed out after ' + Math.round(timeoutMs/1000) + 's. Try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function sendWithRetry(resend, emailOpts, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { data, error } = await resend.emails.send(emailOpts);
+    if (!error) return data;
+    // Retry on rate limit (429) with exponential backoff
+    if (error.statusCode === 429 && attempt < maxRetries) {
+      const wait = (attempt + 1) * 3000;
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    throw new Error(`Resend API error: ${error.message || JSON.stringify(error)}`);
+  }
+}
+
 async function generateFreeSamples(lead) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
   const rating = lead.rating !== 'N/A' ? lead.rating + '/5' : '';
   const reviews = lead.reviews && lead.reviews !== 'N/A' ? lead.reviews + ' reviews' : '';
 
-  const msg = await client.messages.create({
+  const msg = await callAnthropicWithTimeout(client, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1500,
     messages: [{ role: 'user', content:
@@ -206,20 +238,20 @@ Return ONLY valid JSON:
   });
 
   const result = parseJSON(msg.content[0].text);
-  if (!result) throw new Error('Failed to generate samples.');
+  if (!result) throw new Error('Failed to generate samples. Claude returned invalid JSON.');
   return cleanCopy(result);
 }
 
 async function generateEmailCopy(lead, previewUrl) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
-  const msg = await client.messages.create({
+  const msg = await callAnthropicWithTimeout(client, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1000,
     messages: [{ role: 'user', content: buildEmailPrompt(lead, previewUrl, type) }]
   });
   const result = parseJSON(msg.content[0].text);
-  if (!result?.subject || !result?.body) throw new Error('Failed to generate email. Try again.');
+  if (!result?.subject || !result?.body) throw new Error('Failed to generate email copy. Claude returned invalid or incomplete JSON. Try again.');
   return cleanCopy(result);
 }
 
@@ -235,7 +267,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     samples = await generateFreeSamples(lead);
     onProgress({ status: 'generating', message: `Samples ready. Writing email...` });
   } catch(e) {
-    onProgress({ status: 'generating', message: `Skipping samples, writing email...` });
+    onProgress({ status: 'warn', message: `⚠ Sample generation failed (${e.message}). Email will send without deliverables.` });
     samples = null;
   }
 
@@ -390,7 +422,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     if (inList) bodyHtml += flushList();
 
     // URL-only line — render as a styled button/link
-    if (line.match(/^https?:\/\/\S+$/) && line.includes(previewUrl.split('/')[2])) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.match(/^https?:\/\/\S+$/) && previewUrl && trimmedLine.includes(previewUrl.split('/')[2])) {
       const href = trackingOpts?.clickUrl || line;
       bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px">
         <tr><td>
@@ -442,7 +475,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   // Tracking pixel HTML
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
-  const { data, error } = await resend.emails.send({
+  const data = await sendWithRetry(resend, {
     from: `Leif | WebForge <${RESEND_FROM}>`,
     to: emailAddress,
     subject: copy.subject,
@@ -473,10 +506,6 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     </table>`
   });
 
-  if (error) {
-    throw new Error(`Resend API error: ${error.message || JSON.stringify(error)}`);
-  }
-
   onProgress({ status: 'sent', message: `Sent to ${emailAddress} with 5 free deliverables` });
   return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id };
 }
@@ -492,7 +521,7 @@ async function generateFollowUpEmail(lead, step, previousSubject) {
   ];
   const angle = angles[Math.min(step-1, angles.length-1)];
 
-  const msg = await client.messages.create({
+  const msg = await callAnthropicWithTimeout(client, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 600,
     messages: [{ role: 'user', content:

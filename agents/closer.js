@@ -17,10 +17,14 @@ async function handleReply(lead, originalEmail, replyText, onProgress) {
   const client = getClient();
   onProgress({ status:'analyzing', message:`Analyzing reply from ${lead.name}...` });
 
-  const msg = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 600,
-    messages: [{ role:'user', content:
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  let msg;
+  try {
+    msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role:'user', content:
 `You are Leif, the founder of WebForge. You sent a cold outreach email to this business offering them a free demo website and 5 free deliverables. The only thing you asked for in return was a quick 15-minute call. This is your follow-up reply to their response.
 
 The goal of every reply is ONE thing: get them on a 15-minute call. Not to sell pricing, not to close a deal, not to explain everything — just book the call. The call is where everything else happens.
@@ -51,8 +55,16 @@ Sign as Leif, WebForge.
 
 Return ONLY JSON, nothing else:
 {"objectionType":"...","sentiment":"positive|neutral|negative","subject":"Re: [original subject]","body":"..."}`
-    }]
-  });
+      }]
+    }, { signal: controller.signal });
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError' || e.message?.includes('abort')) {
+      throw new Error('Anthropic API timed out after 60s. Try again.');
+    }
+    throw e;
+  }
+  clearTimeout(timer);
 
   const result = parseJSON(msg.content[0].text);
   if (!result?.body) throw new Error('Failed to generate response — try again.');
