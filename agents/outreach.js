@@ -108,20 +108,17 @@ One short line connecting the problem to the solution. Then the demo link on its
 ${previewUrl}
 
 4. THE OFFER LIST
-Use arrow bullets (→). One line each. No fluff. These 5 items:
-→ The demo site, fully built and ready to go live
-→ A ready-to-post Instagram caption written for their ${type}
-→ A professional response template for their Google reviews
-→ An automated customer follow-up message
-→ A full audit of their online presence, socials, and search visibility
+Introduce with: "Here's what's yours to keep, no charge:"
+Then numbered list (1-5), one line each. No fluff:
+1. The live demo website above, fully built out and ready to go live (I'll make it your real site for free)
+2. A ready-to-post Instagram caption written for their ${type}
+3. A professional response template for their Google reviews
+4. An automated customer follow-up message
+5. A full audit of their online presence, socials, and search visibility
 
-5. THE ASK (1-2 sentences)
-Low-friction. Interest-based CTA, not a meeting request.
-GOOD: "Mind if I walk you through it? Just reply to this email."
-GOOD: "If any of this sounds useful, just reply 'interested' and I'll take it from there."
-GOOD: "Reply with what's on your plate right now and I'll show you how this fits."
-BAD: "Book a call" / "When are you free for 15 minutes?" / "Let's hop on a call"
-The ask should feel like replying with one word would be enough.
+5. THE ASK (exact wording, do not change)
+"All I need in return is 5-10 minutes. Either hop on a quick call so I can hear what you're actually dealing with, or just reply to this email and tell me what's been a headache."
+Use this EXACTLY as written. Do not rephrase, shorten, or reword it.
 
 6. CLOSING LINE (1 sentence)
 One sentence that reframes the whole email. Give them credit. Make the next step feel obvious.
