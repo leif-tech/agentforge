@@ -293,8 +293,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
         <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
         <tr><td style="padding:28px 0 6px" colspan="2">
-          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your Free Deliverables</p>
-          <p style="font-size:12px;color:#888;margin:4px 0 0">These are yours to keep, completely free. We'll customize everything to match your voice, style, and brand.</p>
+          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your Free Website + What We Can Do</p>
+          <p style="font-size:12px;color:#888;margin:4px 0 0">The demo website below is yours, completely free. Here's a preview of the kind of work we do for businesses like yours.</p>
         </td></tr>
 
         <tr><td style="padding:20px 0 0" colspan="2">
@@ -303,17 +303,22 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
                   <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">1</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Custom Demo Website</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Your Free Demo Website</td>
                 </tr></table>
               </td>
             </tr>
             <tr><td style="padding:0 20px 16px">
               <a href="${linkUrl}" style="font-size:13px;color:#4f46e5;text-decoration:none;word-break:break-all">${previewUrl}</a>
+              <p style="font-size:11px;color:#888;margin:6px 0 0">This is yours to keep, no strings attached.</p>
             </td></tr>
           </table>
         </td></tr>
 
-        <tr><td style="padding:12px 0 0" colspan="2">
+        <tr><td style="padding:20px 0 4px" colspan="2">
+          <p style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.1em;margin:0">Sample work we do for businesses like yours</p>
+        </td></tr>
+
+        <tr><td style="padding:8px 0 0" colspan="2">
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
             <tr>
               <td style="padding:16px 20px 14px">
