@@ -651,9 +651,12 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
         <button class="ab v" onclick="go('outreach')">→ Outreach</button>
       </div>
     </div>
-    <div style="padding:0 18px 10px;display:flex;align-items:center;gap:8px">
-      <input type="text" id="b-search" placeholder="Search businesses by name, type, or address..." oninput="drawB()" style="flex:1;padding:8px 12px;font-size:12px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);color:var(--t1);outline:none;transition:border .2s" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='var(--bd)'">
-      <button class="ab" onclick="document.getElementById('b-search').value='';drawB()" style="font-size:10px;white-space:nowrap">Clear</button>
+    <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px">
+      <div style="position:relative;flex:1;display:flex;align-items:center">
+        <svg style="position:absolute;left:10px;pointer-events:none;opacity:.35" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="b-search" placeholder="Search businesses..." oninput="drawB()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
+      </div>
+      <button class="ab" onclick="document.getElementById('b-search').value='';drawB()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
     </div>
     <div class="tw">
       <div class="empty" id="b-e"><div class="ei">🏗️</div><div class="et">No Leads Yet</div><div class="es">Run Scout first</div></div>
@@ -724,6 +727,13 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="mt">OUTREACH LOG</div>
       <div class="cnt" id="o-badge">0 sent</div>
       <div class="acts"><button class="ab v" onclick="go('closer')">→ Closer</button></div>
+    </div>
+    <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px">
+      <div style="position:relative;flex:1;display:flex;align-items:center">
+        <svg style="position:absolute;left:10px;pointer-events:none;opacity:.35" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="o-search" placeholder="Search outreach log..." oninput="drawOut()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
+      </div>
+      <button class="ab" onclick="document.getElementById('o-search').value='';drawOut()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
     </div>
     <div class="tw">
       <div class="empty" id="o-e"><div class="ei">📨</div><div class="et">No Outreach Sent Yet</div><div class="es">Build demo sites, then send outreach</div></div>
@@ -1338,9 +1348,12 @@ function getLeadTracking(id){
   return {opens:recs.reduce((s,r)=>s+r.opens.length,0),clicks:recs.reduce((s,r)=>s+r.clicks.length,0),followUps};
 }
 function drawOut(){
-  const sent=leads.filter(l=>l.outreachEmail),e=document.getElementById('o-e'),t=document.getElementById('o-tbl');
-  document.getElementById('o-badge').textContent=sent.length+' sent';
-  if(!sent.length){e.style.display='flex';t.style.display='none';return;}
+  const allSent=leads.filter(l=>l.outreachEmail);
+  const oq=(document.getElementById('o-search')?.value||'').trim().toLowerCase();
+  const sent=oq?allSent.filter(l=>(l.name||'').toLowerCase().includes(oq)||(l.address||'').toLowerCase().includes(oq)||(l.outreachEmail||'').toLowerCase().includes(oq)||(l.type||'').toLowerCase().replace(/_/g,' ').includes(oq)||(l.status||'').toLowerCase().includes(oq)):allSent;
+  const e=document.getElementById('o-e'),t=document.getElementById('o-tbl');
+  document.getElementById('o-badge').textContent=oq?sent.length+'/'+allSent.length+' sent':allSent.length+' sent';
+  if(!sent.length){e.style.display='flex';e.querySelector('.et').textContent=oq?'No Matches':'No Outreach Sent Yet';e.querySelector('.es').textContent=oq?'Try a different search term':'Build demo sites, then send outreach';t.style.display='none';return;}
   e.style.display='none';t.style.display='table';
   document.getElementById('o-tbl-body').innerHTML=sent.map((l,i)=>{
     const tr=getLeadTracking(l.id);
