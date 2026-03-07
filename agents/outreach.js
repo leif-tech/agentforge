@@ -194,6 +194,8 @@ async function generateFreeSamples(lead) {
     messages: [{ role: 'user', content:
 `Generate 3 polished, professional AI samples for "${lead.name}", a ${type} at ${lead.address}. ${rating ? 'Rating: ' + rating : ''} ${reviews}.
 
+IMPORTANT: NEVER use em dashes (—) anywhere. Use commas or periods instead. No exclamation marks.
+
 Return ONLY valid JSON:
 {
   "instagram_post": "Polished ready-to-post Instagram caption. 3-4 sentences, professional and engaging, speaks to their ideal customer, ends with CTA and 5-7 relevant hashtags. Specific to their business type and location.",
@@ -205,7 +207,7 @@ Return ONLY valid JSON:
 
   const result = parseJSON(msg.content[0].text);
   if (!result) throw new Error('Failed to generate samples.');
-  return result;
+  return cleanCopy(result);
 }
 
 async function generateEmailCopy(lead, previewUrl) {
@@ -259,8 +261,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
         <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
         <tr><td style="padding:28px 0 6px" colspan="2">
-          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your 5 Free Deliverables</p>
-          <p style="font-size:12px;color:#888;margin:4px 0 0">Ready to use, no editing needed.</p>
+          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your Free Deliverables</p>
+          <p style="font-size:12px;color:#888;margin:4px 0 0">Ready to use. Edit to match your tone, style, and preference.</p>
         </td></tr>
 
         <tr><td style="padding:20px 0 0" colspan="2">
