@@ -190,11 +190,11 @@ const emit = (sid,d) => { if(sid&&sessions[sid]) sessions[sid](d) };
 
 // ── SCOUT ─────────────────────────────────────────────────────────────────
 app.post('/api/scout/run', async (req,res) => {
-  const { location, businessTypes, businessType, maxLeads, sessionId } = req.body;
+  const { location, businessTypes, businessType, maxLeads, filter, sessionId } = req.body;
   if (!location) return res.status(400).json({ error:'Location required' });
   res.json({ status:'started' });
   try {
-    await runScout({ location, businessTypes, businessType, maxLeads:parseInt(maxLeads)||20 }, p => {
+    await runScout({ location, businessTypes, businessType, maxLeads:parseInt(maxLeads)||20, filter:filter||'no_website' }, p => {
       emit(sessionId, { type:'scout', ...p });
       if (p.lead) {
         if (!leads.find(l=>l.name===p.lead.name&&l.address===p.lead.address)) {

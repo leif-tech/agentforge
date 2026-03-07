@@ -36,7 +36,7 @@ async function getDetails(placeId) {
   return null;
 }
 
-async function scoutType({ location, businessType, maxLeads, seenIds }, onProgress) {
+async function scoutType({ location, businessType, maxLeads, seenIds, filter }, onProgress) {
   let raw = [];
   try { raw = await searchPlaces(businessType, location); }
   catch(e) { onProgress({ status:'error', message:`[${businessType}] ${e.message}` }); return []; }
@@ -50,13 +50,14 @@ async function scoutType({ location, businessType, maxLeads, seenIds }, onProgre
     const d = await getDetails(place.place_id);
     if (!d) continue;
     onProgress({ status:'checking', message:`[${businessType}] Checking: ${d.name||place.name}`, leadsFound: leads.length });
-    if (d.website) continue;
+    if (filter === 'no_website' && d.website) continue;
     if (d.business_status && d.business_status !== 'OPERATIONAL') continue;
     if (!d.rating && !d.user_ratings_total) continue; // skip ghost/fake listings
     const lead = {
       name: d.name || place.name || 'Unknown',
       address: d.formatted_address || '',
       phone: d.formatted_phone_number || 'N/A',
+      website: d.website || null,
       rating: d.rating || 'N/A',
       reviews: d.user_ratings_total || 0,
       type: businessType,
@@ -73,13 +74,13 @@ async function scoutType({ location, businessType, maxLeads, seenIds }, onProgre
   return leads;
 }
 
-async function runScout({ location, businessTypes, businessType, maxLeads=20 }, onProgress) {
+async function runScout({ location, businessTypes, businessType, maxLeads=20, filter='no_website' }, onProgress) {
   const loc = sanitize(location);
   const types = (businessTypes?.length ? businessTypes : [businessType]).filter(Boolean);
   if (!types.length) throw new Error('No business types selected');
-  onProgress({ status:'start', message:`Searching ${types.length} type(s) in "${loc}"...` });
+  onProgress({ status:'start', message:`Searching ${types.length} type(s) in "${loc}"${filter==='all'?' (all businesses)':''}...` });
   const seenIds = new Set();
-  const results = await Promise.all(types.map(t => scoutType({ location:loc, businessType:t, maxLeads:parseInt(maxLeads)||20, seenIds }, onProgress)));
+  const results = await Promise.all(types.map(t => scoutType({ location:loc, businessType:t, maxLeads:parseInt(maxLeads)||20, seenIds, filter }, onProgress)));
   const all = results.flat();
   const seen = new Set();
   const unique = all.filter(l => { const k=`${l.name}|${l.address}`.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });

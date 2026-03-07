@@ -511,6 +511,13 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
         <div style="font-size:9.5px;color:var(--t4);margin-top:3px">Click to add · click × to remove</div>
       </div>
       <div class="f">
+        <span>Website Filter</span>
+        <select id="s-filter" style="font-size:11px">
+          <option value="no_website">No website only (default)</option>
+          <option value="all">All businesses</option>
+        </select>
+      </div>
+      <div class="f">
         <span>Max leads per type</span>
         <div class="range-row">
           <input type="range" id="s-max" min="5" max="50" value="20" oninput="document.getElementById('rv').textContent=this.value">
@@ -1096,7 +1103,7 @@ async function runScout(){
   document.getElementById('scan-anim').style.display='flex';
   document.getElementById('s-run').textContent='0';
   log('s-feed',`Launching ${selTypes.length} search(es) in ${loc}...`,'hi');
-  await post('/api/scout/run',{location:loc,businessTypes:selTypes,maxLeads:document.getElementById('s-max').value,sessionId:sid});
+  await post('/api/scout/run',{location:loc,businessTypes:selTypes,maxLeads:document.getElementById('s-max').value,filter:document.getElementById('s-filter').value,sessionId:sid});
 }
 
 function scoreBadge(s){if(s==null)return'';return s>=70?`<span class="score score-hi">${s}</span>`:s>=40?`<span class="score score-md">${s}</span>`:`<span class="score score-lo">${s}</span>`;}
