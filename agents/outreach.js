@@ -113,7 +113,7 @@ Then numbered list (1-5), one line each. No fluff:
 1. The live demo website above, fully built out and ready to go live (I'll make it your real site for free)
 2. A ready-to-post Instagram caption written for their ${type}
 3. A professional response template for their Google reviews
-4. An automated customer follow-up message
+4. An automated customer follow-up system via text message or social media
 5. A full audit of their online presence, socials, and search visibility
 
 5. THE ASK (exact wording, do not change)
@@ -298,7 +298,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
                   <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">4</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up Message</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up via Text or Social</td>
                 </tr></table>
               </td>
             </tr>
