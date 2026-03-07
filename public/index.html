@@ -1257,7 +1257,7 @@ function prevSite(id){
   const iframeSrc=publicUrl||localUrl;
   document.getElementById('site-name').textContent=l.name+' — '+(publicUrl.includes('pages.dev')?`☁️ ${publicUrl}`:l.address);
   document.getElementById('sframe').src=iframeSrc;
-  document.getElementById('site-link').href=publicUrl;
+  document.getElementById('site-link').href=publicUrl||localUrl;
   document.getElementById('site-ov').classList.add('on');
 }
 function goOutreach(){closeOv('site-ov');go('outreach');if(siteLead!=null){document.getElementById('o-lead').value=siteLead;oChg();}

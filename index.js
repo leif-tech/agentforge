@@ -458,7 +458,9 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
     emit(sessionId, { type:'followup_batch', status:'sending', message:`[${i+1}/${targets.length}] Following up with ${lead.name}...`, progress: Math.round((i/targets.length)*100) });
     try {
       const prevOutreach = outreach.find(o => o.leadId === lead.id);
-      const followUp = await generateFollowUpEmail(lead, 1, prevOutreach?.subject || 'Your demo website');
+      const prevFollowUps = outreach.filter(o => o.leadId === lead.id && o.type === 'followup').length;
+      const step = Math.min(prevFollowUps + 1, 3);
+      const followUp = await generateFollowUpEmail(lead, step, prevOutreach?.subject || 'Your demo website');
       const trackingId = randomUUID();
       const previewUrl = lead.previewUrl||getBase();
       tracking.push({ trackingId, leadId:lead.id, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
