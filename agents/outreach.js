@@ -104,21 +104,25 @@ EMAIL STRUCTURE - follow this exactly, in this order:
 - 2-3 sentences max.
 
 3. THE BRIDGE
-- One short line acknowledging what they have built, then drop the demo URL.
-- Format: "[One line observation]. ${previewUrl}"
+- Emphasize that we built them a DEMO website to prove what's possible. Make it clear this is just a demo, it can be changed and customized however they want, and we will build their real website for free.
+- Use phrasing like: "We built you a demo website to prove it." Then drop the URL.
+- Format: "We built you a demo website to prove it. ${previewUrl}"
+- Make sure the reader understands: this is a preview, not the final product. The real site is free.
 
 4. THE OFFER LIST
-- Intro line: "Here's what's yours to keep, no charge:"
-- Then list all 5 items exactly as follows:
+- First, frame the demo website as the free offer:
+  "The demo website above is yours, for free. We'll turn it into your real site, customized however you want, at no cost."
 
-1. The live demo website above, fully built out and ready to go live (I'll make it your real site for free)
+- Then transition to additional services with a line like:
+  "We also offer these, and many more:"
+
+1. An automated customer follow-up system via text message or social media, this one runs while you sleep
 2. A ready-to-post Instagram caption written for your ${type}
 3. A professional response template for your Google reviews
-4. An automated customer follow-up system via text message or social media, this one runs while you sleep
-5. A full audit of your online presence, socials, and search visibility
+4. A full audit of your online presence, socials, and search visibility
 
-IMPORTANT: Only item 1 is truly free. Items 2-5 are services we can provide. Do not frame them as free. Let the list speak for itself.
-Item 4 is the anchor. It must feel like the most valuable thing on the list.
+IMPORTANT: The website is free. The additional services (items 1-4) are paid services we offer. Do not frame them as free. Let the list speak for itself.
+Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list.
 
 5. THE ASK
 - Exact framing: "All I need in return is 5-10 minutes."
