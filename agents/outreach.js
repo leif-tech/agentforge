@@ -25,6 +25,120 @@ function cleanCopy(obj) {
   return obj;
 }
 
+function getFollowUpExamples(type) {
+  const t = type.toLowerCase();
+  const examples = {
+    cafe: {
+      short: 'a thank-you text 2 hours after their visit with a "come back this week for 10% off" nudge',
+      scenarios: 'After a morning visit: "Thanks for stopping by today. Your usual cortado will be waiting." After a first visit: "Hope you loved it. Mention this text for a free pastry next time."'
+    },
+    coffee: {
+      short: 'a thank-you text 2 hours after their visit with a "come back this week for 10% off" nudge',
+      scenarios: 'After a morning visit: "Thanks for stopping by today. Your usual cortado will be waiting." After a first visit: "Hope you loved it. Mention this text for a free pastry next time."'
+    },
+    restaurant: {
+      short: 'a follow-up the next day thanking them for dining in, plus a "book your next table" link',
+      scenarios: 'After dinner: "Hope you enjoyed the meal last night. Your table is always here." Before holidays: "Valentine\'s reservations are filling up. Want us to save your usual spot?"'
+    },
+    'nail': {
+      short: 'a rebooking nudge 2-3 weeks after their appointment, plus seasonal design drops',
+      scenarios: 'At 2 weeks: "Your nails are probably ready for a refresh. Want to book your usual?" New season: "Fall colors just dropped. Book early for the new designs." Birthday: "Birthday nails on us, 20% off this month."'
+    },
+    'hair salon': {
+      short: 'a rebooking reminder 4 weeks after their cut, plus birthday month specials',
+      scenarios: 'After a cut: "Your hair looked amazing walking out. Book your next one before the rush?" At 6 weeks: "It\'s been a minute. Ready for a refresh?" Birthday month: automatic 15% off message.'
+    },
+    salon: {
+      short: 'a rebooking reminder 4 weeks after their appointment, plus birthday month specials',
+      scenarios: 'After an appointment: "You looked amazing walking out. Book your next one before the rush?" At 6 weeks: "It\'s been a minute. Ready for a refresh?" Birthday month: automatic 15% off message.'
+    },
+    hair: {
+      short: 'a rebooking reminder 4 weeks after their cut, plus birthday month specials',
+      scenarios: 'After a cut: "Your hair looked amazing walking out. Book your next one before the rush?" At 6 weeks: "It\'s been a minute. Ready for a refresh?" Birthday month: automatic 15% off message.'
+    },
+    auto: {
+      short: 'an oil change reminder every 3 months, plus seasonal maintenance nudges',
+      scenarios: 'At 3 months: "Your next oil change is coming up. Want to schedule before the weekend rush?" Before winter: "Cold weather is coming. Free tire pressure check if you swing by this week."'
+    },
+    yoga: {
+      short: 'a check-in after their first class, plus weekly class schedule drops',
+      scenarios: 'After first class: "How are you feeling after yesterday? Here\'s this week\'s schedule." If they miss a week: "We saved your spot in Thursday\'s flow class."'
+    },
+    fitness: {
+      short: 'a check-in after their first session, plus milestone congratulations',
+      scenarios: 'After signup: "How was your first workout? Need help with the equipment?" At 30 days: "One month in. You\'re building something real." If inactive: "Your gym misses you. Come back for a free smoothie."'
+    },
+    gym: {
+      short: 'a check-in after their first workout, plus monthly progress nudges',
+      scenarios: 'After first visit: "How was the workout? Any questions about the equipment?" At 2 weeks: "You\'re on a streak. Keep it going." If inactive 10 days: "Your routine is waiting. Free guest pass if you bring a friend."'
+    },
+    barbershop: {
+      short: 'a "time for a fresh cut" reminder every 3-4 weeks',
+      scenarios: 'At 3 weeks: "Looking a little shaggy? Your barber has Thursday open." After a cut: "Looking sharp. See you in a few weeks." Holiday: "Book your pre-holiday cut before slots fill up."'
+    },
+    barber: {
+      short: 'a "time for a fresh cut" reminder every 3-4 weeks',
+      scenarios: 'At 3 weeks: "Looking a little shaggy? Your barber has Thursday open." After a cut: "Looking sharp. See you in a few weeks." Holiday: "Book your pre-holiday cut before slots fill up."'
+    },
+    dental: {
+      short: '6-month cleaning reminders, post-procedure check-ins, and braces adjustment recalls',
+      scenarios: 'After a cleaning: "Great seeing you today. Your next cleaning is in 6 months, we\'ll remind you." After a filling: "How\'s the tooth feeling? Any sensitivity, just call us." Braces: "Your next adjustment is in 4 weeks. We\'ll text you a reminder."'
+    },
+    dentist: {
+      short: '6-month cleaning reminders, post-procedure check-ins, and braces adjustment recalls',
+      scenarios: 'After a cleaning: "Great seeing you today. Your next cleaning is in 6 months, we\'ll remind you." After a filling: "How\'s the tooth feeling? Any sensitivity, just call us." Braces: "Your next adjustment is in 4 weeks. We\'ll text you a reminder."'
+    },
+    vet: {
+      short: 'vaccination reminders, annual checkup recalls, and post-visit check-ins',
+      scenarios: 'After a visit: "How is [pet name] doing today? Any concerns, we\'re here." At 11 months: "Annual checkup time. [Pet name]\'s vaccines are due next month." Seasonal: "Flea and tick season is here. Need a refill on prevention?"'
+    },
+    nail: {
+      short: 'a rebooking nudge 2-3 weeks after their appointment, plus seasonal design drops',
+      scenarios: 'At 2 weeks: "Your nails are probably ready for a refresh. Want to book your usual?" New season: "Fall colors just dropped. Book early for the new designs." Birthday: "Birthday nails on us, 20% off this month."'
+    },
+    bakery: {
+      short: 'birthday cake reminders, holiday pre-order nudges, and "fresh batch" alerts',
+      scenarios: 'Before their birthday: "Your birthday is coming up. Want us to save you a cake?" Before holidays: "Thanksgiving pie pre-orders are open. Last year we sold out." Weekly: "Fresh sourdough just came out of the oven."'
+    },
+    florist: {
+      short: 'anniversary and holiday reminders so they never forget flowers again',
+      scenarios: 'Before Valentine\'s: "Valentine\'s is next week. Want the same arrangement as last time?" Anniversary reminder: "Your anniversary is in 3 days. We have your usual ready." Mother\'s Day: "Don\'t forget Mom. Order by Friday for guaranteed delivery."'
+    },
+    flower: {
+      short: 'anniversary and holiday reminders so they never forget flowers again',
+      scenarios: 'Before Valentine\'s: "Valentine\'s is next week. Want the same arrangement as last time?" Anniversary reminder: "Your anniversary is in 3 days. We have your usual ready." Mother\'s Day: "Don\'t forget Mom. Order by Friday for guaranteed delivery."'
+    },
+    massage: {
+      short: 'a rebooking reminder 3-4 weeks after their session, plus stress-relief tips',
+      scenarios: 'After a session: "Hope you\'re feeling loose today. Drink plenty of water." At 4 weeks: "Your body is probably telling you it\'s time again. Same time next week?" Seasonal: "Holiday stress building up? We just opened extra evening slots."'
+    },
+    spa: {
+      short: 'a rebooking reminder 3-4 weeks after their visit, plus seasonal treatment drops',
+      scenarios: 'After a visit: "Hope you\'re still floating on that relaxation. Drink plenty of water today." At 4 weeks: "Time for another reset? We have openings this week." Birthday month: "Treat yourself, 20% off any treatment this month."'
+    },
+    roofer: {
+      short: 'seasonal roof inspection reminders and post-storm check-in messages',
+      scenarios: 'After a job: "How\'s everything looking up there? Any issues, we\'re a call away." Before storm season: "Big storms forecast this month. Want a free quick inspection?" Annual: "It\'s been a year since your last roof check. Time for a look?"'
+    },
+    contractor: {
+      short: 'project follow-ups, seasonal maintenance reminders, and referral thank-yous',
+      scenarios: 'After a project: "How\'s everything holding up? Let us know if anything needs adjusting." Seasonal: "Spring is the best time for that deck project we talked about." Referral: "Thanks for sending the Johnsons our way. Your next project gets priority scheduling."'
+    },
+    cleaning: {
+      short: 'recurring service reminders, seasonal deep-clean nudges, and satisfaction check-ins',
+      scenarios: 'After a clean: "Hope everything is sparkling. Anything we missed, just let us know." Monthly: "Your next cleaning is coming up. Same day and time work?" Seasonal: "Spring deep clean slots are filling up. Want us to book yours?"'
+    },
+    default: {
+      short: 'a thank-you message after their visit, plus periodic check-ins to keep them coming back',
+      scenarios: 'After a visit: "Thanks for coming in. How was everything?" At 30 days: "It\'s been a month. We\'d love to see you again." Birthday: automatic birthday greeting with a special offer.'
+    }
+  };
+  // Check longer keys first so "nail salon" matches "nail" not "salon", "barbershop" not "barber", etc.
+  const sortedKeys = Object.keys(examples).filter(k => k !== 'default').sort((a, b) => b.length - a.length);
+  const key = sortedKeys.find(k => t.includes(k)) || 'default';
+  return examples[key];
+}
+
 function buildEmailPrompt(lead, previewUrl, type) {
   const hasRating = lead.rating && lead.rating !== 'N/A';
   const rating = parseFloat(lead.rating) || 0;
@@ -127,20 +241,23 @@ Then clarify: this is just a demo, it can be changed and customized however they
 - Then transition to additional services with a line like:
   "We also offer these, and many more:"
 
-1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM, this one runs while you sleep
+1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM. For a ${type}, that means ${getFollowUpExamples(type).short}. This one runs while you sleep.
 2. A ready-to-post Instagram caption written for your ${type}
 3. A professional response template for your Google reviews
 4. A full audit of your online presence, socials, and search visibility
 
+After the list, add a line like: "And that's just the start. We do a lot more." Keep it casual and confident, not salesy.
+
 IMPORTANT: The website is free. The additional services (items 1-4) are paid services we offer. Do not frame them as free. Let the list speak for itself.
-Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list.
+Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list. Include the niche-specific example to make it concrete.
 
 5. THE ASK
-- Exact framing: "All I need in return is 5-10 minutes."
-- One option only: hop on a quick call. The call is so we can learn what they want on the website and have a quick chat about their business.
+- First, frame it as: "We handle all of this for you." or "We can set all of this up for you." Make it clear that we DO the work, not just advise.
+- Then the ask: "If you're interested, all I need is 5-10 minutes on a quick call."
+- The call is so we can learn what they want on the website and figure out what they need.
 - Do NOT offer "or just reply to this email" as an alternative. Keep it to the call only.
 - Low pressure. No urgency theater. One door, left open.
-- 2 sentences max.
+- 2-3 sentences max.
 
 6. CLOSING LINE
 - One original line. Niche-specific. Must feel human.
@@ -280,20 +397,23 @@ PIVOT SENTENCE RULES:
 - Frame it as what WebForge does for businesses like theirs:
   "Here's what we do for ${type}s like yours:"
 
-1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM, this one runs while you sleep
+1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM. For a ${type}, that means ${getFollowUpExamples(type).short}. This one runs while you sleep.
 2. A ready-to-post Instagram caption written for your ${type}
 3. A professional response template for your Google reviews
 4. A full audit of your online presence, socials, and search visibility
 
+After the list, add a line like: "And that's just the start. We do a lot more." Keep it casual and confident, not salesy.
+
 IMPORTANT: These are paid services we offer. Do not frame them as free. Let the list speak for itself.
-Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list.
+Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list. Include the niche-specific example to make it concrete.
 
 5. THE ASK
-- Exact framing: "All I need in return is 5-10 minutes."
-- One option only: hop on a quick call. The call is so we can learn about their business and what systems they're missing.
+- First, frame it as: "We handle all of this for you." or "We can set all of this up for you." Make it clear that we DO the work, not just advise.
+- Then the ask: "If you're interested, all I need is 5-10 minutes on a quick call."
+- The call is so we can learn about their business and figure out what they need.
 - Do NOT offer "or just reply to this email" as an alternative. Keep it to the call only.
 - Low pressure. No urgency theater. One door, left open.
-- 2 sentences max.
+- 2-3 sentences max.
 
 6. CLOSING LINE
 - One original line. Niche-specific. Must feel human.
@@ -382,11 +502,14 @@ async function generateFreeSamples(lead) {
 
 IMPORTANT: NEVER use em dashes (—) anywhere. Use commas or periods instead. No exclamation marks.
 
+NICHE-SPECIFIC FOLLOW-UP CONTEXT for this ${type}:
+${getFollowUpExamples(type).scenarios}
+
 Return ONLY valid JSON:
 {
   "instagram_post": "Polished ready-to-post Instagram caption. 3-4 sentences, professional and engaging, speaks to their ideal customer, ends with CTA and 5-7 relevant hashtags. Specific to their business type and location.",
   "review_response": "Warm professional response to a 5-star Google review. Thank [Customer Name], reference their experience warmly, invite them back. Personal and genuine, not templated. 2-3 sentences.",
-  "followup_message": "Professional friendly follow-up message via SMS or email sent 2 days after a visit. Checks their experience, offers help, gently encourages next booking. Under 60 words."
+  "followup_message": "A real example of an automated follow-up message specific to a ${type}. Use the niche context above for inspiration. Make it feel like a real text from the business, not a template. Professional but warm. Under 60 words."
 }`
     }]
   });
@@ -444,6 +567,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   // Determine URLs for links — use click tracking if available
   const linkUrl = trackingOpts?.clickUrl || previewUrl;
+  const type = (lead.type || 'business').replace(/_/g, ' ');
+  const followUpEx = getFollowUpExamples(type);
 
   let samplesHtml = '';
   if (samples) {
@@ -538,7 +663,11 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
                 </tr></table>
               </td>
             </tr>
-            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">${samples.followup_message || ''}</td></tr>
+            <tr><td style="padding:0 20px 4px;font-size:13px;color:#333;line-height:1.7">${samples.followup_message || ''}</td></tr>
+            <tr><td style="padding:4px 20px 16px">
+              <p style="font-size:11px;color:#888;margin:0 0 6px;font-weight:600">How this works for a ${type}:</p>
+              <p style="font-size:11px;color:#666;margin:0;line-height:1.7;font-style:italic">${followUpEx.scenarios}</p>
+            </td></tr>
           </table>
         </td></tr>
 
