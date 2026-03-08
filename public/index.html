@@ -529,7 +529,8 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="sc"><div class="sl">Total Leads</div><div class="sv" id="s-tot">0</div></div>
       <div class="sc"><div class="sl">This Run</div><div class="sv dim" id="s-run">0</div></div>
       <div class="sc"><div class="sl">With Phone</div><div class="sv dim" id="s-ph">0</div></div>
-      <div class="sc"><div class="sl">No Website</div><div class="sv dim" id="s-nw">0</div></div>
+      <div class="sc"><div class="sl">No Website</div><div class="sv dim" id="s-nw" style="color:var(--green)">0</div></div>
+      <div class="sc"><div class="sl">Has Website</div><div class="sv dim" id="s-hw" style="color:#ff6b85">0</div></div>
     </div>
     <div class="feed-wrap">
       <div class="lbl">Live Feed</div>
@@ -565,7 +566,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
         <div class="es">Set location, pick business types, then launch the Scout</div>
       </div>
       <table id="scout-tbl" style="display:none">
-        <thead><tr><th><input type="checkbox" id="s-all" onchange="sTogAll(this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></th><th>#</th><th>Business</th><th>Phone</th><th>Rating</th><th>Email</th><th>Type</th><th>Score</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="s-all" onchange="sTogAll(this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></th><th>#</th><th>Business</th><th>Phone</th><th>Rating</th><th>Website</th><th>Email</th><th>Type</th><th>Score</th><th>Status</th><th></th></tr></thead>
         <tbody id="scout-body"></tbody>
       </table>
     </div>
@@ -1135,7 +1136,7 @@ function drawScout(){
   const multi=groups.size>1;
   let html='';
   for(const [city,items] of groups){
-    if(multi) html+=cityHeaderRow(city,items.length,10,sSel,items);
+    if(multi) html+=cityHeaderRow(city,items.length,11,sSel,items);
     if(multi&&collapsedCities.has(city)) continue;
     html+=items.map(({lead:l,idx:i})=>`<tr>
     <td><input type="checkbox" ${sSel.has(l.id)?'checked':''} onchange="sTog('${l.id}',this.checked)" style="width:auto;margin:0;padding:0;accent-color:var(--cyan)"></td>
@@ -1143,6 +1144,7 @@ function drawScout(){
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td class="ph ${!l.phone||l.phone==='N/A'?'na':''}">${x(l.phone||'N/A')}</td>
     <td style="font-size:11px;color:var(--amber)">${l.rating!=='N/A'?'★ '+l.rating+' <span style="color:var(--t3);font-size:9px">('+l.reviews+')</span>':'—'}</td>
+    <td>${l.website?'<span class="badge" style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);color:#ff6b85;font-size:8.5px;padding:2px 7px;border-radius:10px">Has Site</span>':'<span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--green);font-size:8.5px;padding:2px 7px;border-radius:10px">No Site</span>'}</td>
     <td>${l.foundEmail?`<span class="badge b-em">${x(l.foundEmail)}</span>`:'<span style="color:var(--t4);font-size:10px">—</span>'}</td>
     <td><span class="badge b-type">${x(l.type||'').replace(/_/g,' ')}</span></td>
     <td>${scoreBadge(l.score)}</td>
@@ -1177,7 +1179,8 @@ async function sDelSel(){
 function updStats(){
   const t=leads.length,ph=leads.filter(l=>l.phone&&l.phone!=='N/A').length,em=leads.filter(l=>l.foundEmail).length,si=leads.filter(l=>l.siteFile).length;
   document.getElementById('s-tot').textContent=t;
-  document.getElementById('s-nw').textContent=leads.filter(l=>!l.siteFile).length;
+  document.getElementById('s-nw').textContent=leads.filter(l=>!l.website).length;
+  document.getElementById('s-hw').textContent=leads.filter(l=>l.website).length;
   document.getElementById('s-ph').textContent=ph;
   document.getElementById('ef-tot').textContent=t;
   document.getElementById('ef-found').textContent=em;
