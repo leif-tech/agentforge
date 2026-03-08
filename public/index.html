@@ -1348,6 +1348,7 @@ function getOutreachType(){
 }
 function oChg(){
   document.getElementById('o-prev-box').style.display='none';
+  document.getElementById('o-email').value='';
   const id=document.getElementById('o-lead').value,h=document.getElementById('o-hint');
   const lead=leads.find(l=>l.id===id);
   const warn=document.getElementById('o-local-warn');
