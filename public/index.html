@@ -695,6 +695,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
         </div>
       </div>
       <div id="o-outreach-type-badge" style="display:none;font-size:10px;font-weight:700;padding:5px 10px;border-radius:5px;margin-bottom:8px;letter-spacing:.04em"></div>
+      <div id="o-lead-info" style="display:none;font-size:10.5px;padding:9px 11px;border:1px solid var(--b1);border-radius:6px;background:var(--s2);margin-bottom:8px;line-height:1.7"></div>
       <div class="f"><span>Recipient Email</span><input type="email" id="o-email" placeholder="owner@business.com"></div>
       <div class="hint" id="o-hint" onclick="useEmail()">💡 Use found email: <span id="o-hint-v"></span></div>
       <div id="o-local-warn" style="display:none;font-size:10px;color:var(--amber);padding:7px 9px;border:1px solid rgba(255,179,0,.25);border-radius:5px;background:rgba(255,179,0,.05);margin-bottom:8px;line-height:1.6">
@@ -1364,6 +1365,14 @@ function oChg(){
       badge.style.border='1px solid rgba(0,255,136,.3)';
     }
   } else { badge.style.display='none'; }
+  const info=document.getElementById('o-lead-info');
+  if(lead){
+    const ratingStr=lead.rating&&lead.rating!=='N/A'?'<span style="color:var(--amber)">★ '+lead.rating+'</span> <span style="color:var(--t3)">('+lead.reviews+' reviews)</span>':'<span style="color:var(--t4)">No rating</span>';
+    const webStr=lead.website?'<span style="color:var(--amber);font-weight:700">Has Website</span> <a href="'+lead.website+'" target="_blank" style="color:var(--cyan);font-size:9.5px;text-decoration:none;word-break:break-all">'+lead.website+'</a>':'<span style="color:var(--green);font-weight:700">No Website</span>';
+    const typeStr='<span style="color:var(--t2)">'+(lead.type||'').replace(/_/g,' ')+'</span>';
+    info.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px 16px"><div>'+typeStr+'</div><div>'+ratingStr+'</div><div>'+webStr+'</div></div>';
+    info.style.display='block';
+  } else { info.style.display='none'; }
   if(lead?.foundEmail){h.style.display='block';document.getElementById('o-hint-v').textContent=lead.foundEmail;}
   else h.style.display='none';
   const pu=lead?.previewUrl||'';
