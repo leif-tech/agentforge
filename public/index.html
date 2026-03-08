@@ -1414,10 +1414,15 @@ async function sendOut(force){
   try{const cfg=await(await fetch('/api/settings')).json();if(!cfg.hasSmtp){alert('⚠ Resend not configured! Go to Settings.');go('settings');return;}}catch{}
   const subject=document.getElementById('o-subj')?.value?.trim();
   const body=document.getElementById('o-email-body')?.value?.trim();
-  btn(force?'o-force-btn':'o-send-btn','Sending...',true);
+  const btnId=force?'o-force-btn':'o-send-btn';
+  const btnLabel=force?'⚡ Force Resend':'▶ Send Outreach';
+  btn(btnId,'Sending...',true);
   log('o-feed',`${force?'Force sending':'Sending'} to ${em}...`,'hi');
   const outreachType=getOutreachType();
-  await post('/api/outreach/send',{id,emailAddress:em,sessionId:sid,subject,body,force:!!force,outreachType});
+  try{
+    const r=await post('/api/outreach/send',{id,emailAddress:em,sessionId:sid,subject,body,force:!!force,outreachType});
+    if(!r.ok){const d=await r.json().catch(()=>({}));log('o-feed','✗ '+(d.error||'Send failed ('+r.status+')'),'er');btn(btnId,btnLabel,false);}
+  }catch(e){log('o-feed','✗ Network error: '+e.message,'er');btn(btnId,btnLabel,false);}
 }
 function getLeadTracking(id){
   const recs=trackingData.filter(t=>t.leadId===id);
