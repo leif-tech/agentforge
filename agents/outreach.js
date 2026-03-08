@@ -92,10 +92,6 @@ function getFollowUpExamples(type) {
       short: 'vaccination reminders, annual checkup recalls, and post-visit check-ins',
       scenarios: 'After a visit: "How is [pet name] doing today? Any concerns, we\'re here." At 11 months: "Annual checkup time. [Pet name]\'s vaccines are due next month." Seasonal: "Flea and tick season is here. Need a refill on prevention?"'
     },
-    nail: {
-      short: 'a rebooking nudge 2-3 weeks after their appointment, plus seasonal design drops',
-      scenarios: 'At 2 weeks: "Your nails are probably ready for a refresh. Want to book your usual?" New season: "Fall colors just dropped. Book early for the new designs." Birthday: "Birthday nails on us, 20% off this month."'
-    },
     bakery: {
       short: 'birthday cake reminders, holiday pre-order nudges, and "fresh batch" alerts',
       scenarios: 'Before their birthday: "Your birthday is coming up. Want us to save you a cake?" Before holidays: "Thanksgiving pie pre-orders are open. Last year we sold out." Weekly: "Fresh sourdough just came out of the oven."'
@@ -177,12 +173,14 @@ function buildEmailPrompt(lead, previewUrl, type) {
     flower: `A guy needs flowers for an anniversary. No site, no gallery of arrangements. He orders from someone with photos.`,
     massage: `A woman wants to treat herself. She searches, finds only a phone number. Feels unsure. Books somewhere with a real site.`,
     spa: `A woman wants to treat herself. She searches, finds only a phone number. Feels unsure. Books somewhere with a real site.`,
+    dental: `A family just moved in. They search for a dentist. No website, no info about the team. They pick the one that looked established.`,
     dentist: `A family just moved in. They search for a dentist. No website, no info about the team. They pick the one that looked established.`,
     vet: `A new pet owner is nervous. They search local vets. One has a site with the doctor's photo and approach. They call that one.`,
     cleaning: `A homeowner wants to hire cleaners. They found the name through a neighbor. No site, no proof of work. They Google someone else.`,
     default: `Someone hears about them. They search the name. Just a Google listing with an address and a phone number. No story, no details. They pick the next result.`
   };
-  const nicheKey = Object.keys(nicheFlips).find(k => type.toLowerCase().includes(k)) || 'default';
+  const sortedNicheKeys = Object.keys(nicheFlips).filter(k => k !== 'default').sort((a, b) => b.length - a.length);
+  const nicheKey = sortedNicheKeys.find(k => type.toLowerCase().includes(k)) || 'default';
   const flipExample = nicheFlips[nicheKey];
 
   return `You are writing a cold outreach email on behalf of Leif from WebForge.
@@ -277,7 +275,7 @@ SUBJECT LINE RULES:
 - Winning formula (tested): [Review count]. [Consequence they're experiencing].
   Example: "${reviews} reviews. Still losing clicks to competitors."
 - Must be specific to THIS business. Use their review count (${reviews}), name (${lead.name}), or niche (${type}).
-- No emojis. No exclamation marks. No ALL CAPS. No spam trigger words.
+- No emojis. No ALL CAPS. No spam trigger words. Exclamation marks are allowed where they add energy or warmth, but use them sparingly (1-2 max in the whole email, never in the subject line).
 - BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
 
 Generate 3 subject line options internally, ranked by curiosity score:
@@ -288,7 +286,7 @@ Then pick the BEST one (Punchy or Bold preferred) and use it as the subject in y
 
 HARD RULES:
 - No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
-- No exclamation marks. No semicolons.
+- No semicolons. Exclamation marks are OK where they feel natural and add warmth or energy, but never more than 2 in the whole email.
 - Never start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
 - First word of the email must be "You" or "Your".
 - BANNED words: "synergy", "leverage", "solutions", "partnership", "opportunity", "game-changer", "next level", "stand out", "competitive edge"
@@ -337,12 +335,14 @@ function buildWebsiteOutreachPrompt(lead, type) {
     flower: `A guy orders flowers for Valentine's. Great experience. No follow-up for Mother's Day, no reminder. He orders from whoever shows up first online.`,
     massage: `A client books a session, feels amazing. No follow-up, no rebooking nudge. Life gets busy and they don't come back for months.`,
     spa: `A client books a session, feels amazing. No follow-up, no rebooking nudge. Life gets busy and they don't come back for months.`,
+    dental: `A patient finishes their cleaning. No follow-up text, no reminder for 6 months. They procrastinate and eventually switch to whoever is convenient.`,
     dentist: `A patient finishes their cleaning. No follow-up text, no reminder for 6 months. They procrastinate and eventually switch to whoever is convenient.`,
     vet: `A pet owner had a great visit. No follow-up check-in, no vaccination reminder. They end up at a different vet next time.`,
     cleaning: `A homeowner loved the deep clean. No follow-up, no recurring schedule offer. They forget the name and Google someone else next time.`,
     default: `A customer has a great experience. Leaves a review. Never hears from the business again. Slowly forgets about them and moves on to whatever shows up next.`
   };
-  const nicheKey = Object.keys(nicheFlips).find(k => type.toLowerCase().includes(k)) || 'default';
+  const sortedNicheKeys = Object.keys(nicheFlips).filter(k => k !== 'default').sort((a, b) => b.length - a.length);
+  const nicheKey = sortedNicheKeys.find(k => type.toLowerCase().includes(k)) || 'default';
   const flipExample = nicheFlips[nicheKey];
 
   return `You are writing a cold outreach email on behalf of Leif from WebForge.
@@ -433,7 +433,7 @@ SUBJECT LINE RULES:
 - Winning formula: [Review count]. [Consequence they're experiencing with systems].
   Example: "${reviews} reviews. Zero follow-up system."
 - Must be specific to THIS business.
-- No emojis. No exclamation marks. No ALL CAPS. No spam trigger words.
+- No emojis. No ALL CAPS. No spam trigger words. Exclamation marks are allowed where they add energy or warmth, but use them sparingly (1-2 max in the whole email, never in the subject line).
 - BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
 
 Generate 3 subject line options internally, ranked by curiosity score:
@@ -444,7 +444,7 @@ Then pick the BEST one (Punchy or Bold preferred) and use it as the subject in y
 
 HARD RULES:
 - No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
-- No exclamation marks. No semicolons.
+- No semicolons. Exclamation marks are OK where they feel natural and add warmth or energy, but never more than 2 in the whole email.
 - Never start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
 - First word of the email must be "You" or "Your".
 - NEVER mention building a website, a demo site, or offering a free website. This business already has one.
@@ -500,7 +500,7 @@ async function generateFreeSamples(lead) {
     messages: [{ role: 'user', content:
 `Generate 3 polished, professional AI samples for "${lead.name}", a ${type} at ${lead.address}. ${rating ? 'Rating: ' + rating : ''} ${reviews}.
 
-IMPORTANT: NEVER use em dashes (—) anywhere. Use commas or periods instead. No exclamation marks.
+IMPORTANT: NEVER use em dashes (—) anywhere. Use commas or periods instead. Exclamation marks are fine where they feel natural.
 
 NICHE-SPECIFIC FOLLOW-UP CONTEXT for this ${type}:
 ${getFollowUpExamples(type).scenarios}
@@ -850,7 +850,7 @@ Rules:
 - Start with "You" or "Your", never "I" or a greeting
 - Conversational, confident, human
 - NEVER use em dashes (—) anywhere. Use commas or periods instead.
-- No exclamation marks. No semicolons.
+- No semicolons. Exclamation marks are OK where they feel natural and add warmth or energy, but never more than 2 in the whole email.
 - No corporate language, no buzzwords
 - BANNED: "just checking in", "following up", "wanted to reach out", "circling back", "touching base", "bumping this"
 - Subject line: 5-8 words, creates curiosity or tension, specific to their business

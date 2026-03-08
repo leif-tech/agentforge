@@ -1393,6 +1393,7 @@ async function prevEmail(){
   const outreachType=getOutreachType();
   try{
     const r=await fetch('/api/outreach/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,outreachType})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));alert('Error: '+(e.error||'Server error ('+r.status+')'));document.getElementById('o-prev-btn').textContent='◈ Preview Email Copy';return;}
     const d=await r.json();
     if(d.ok){
       document.getElementById('o-subj').value=d.copy.subject;
@@ -1483,9 +1484,11 @@ function addCC(r,orig){
     <div style="margin-bottom:9px"><span class="badge ${r.sentiment==='positive'?'b-hot':'b-sent'}">${lbl[r.objectionType]||r.objectionType}</span></div>
     <div class="cl">Suggested Response</div>
     <div class="ebox"><div class="esubj">${x(r.subject||'')}</div><div class="ebody">${x(r.body||'')}</div></div>
-    <button class="ab" style="margin-top:8px" onclick="navigator.clipboard.writeText(${JSON.stringify(r.body||'')}).then(()=>this.textContent='Copied ✓').then(()=>setTimeout(()=>this.textContent='Copy',1500))">Copy</button>`;
+    <button class="ab" style="margin-top:8px" onclick="cpText(this)">Copy</button>`;
+  d.querySelector('.ab').dataset.copy=r.body||'';
   document.getElementById('c-res').prepend(d);
 }
+function cpText(btn){navigator.clipboard.writeText(btn.dataset.copy||'').then(()=>{btn.textContent='Copied ✓';setTimeout(()=>btn.textContent='Copy',1500);});}
 function cpReply(){if(lastReply)navigator.clipboard.writeText(lastReply.body||'');}
 
 // ── ANALYTICS ─────────────────────────────────────────────────────────────
@@ -1557,8 +1560,10 @@ async function saveNotes(){
 
 // ── SCORING ───────────────────────────────────────────────────────────
 async function scoreAll(){
-  const d=await(await fetch('/api/leads/score',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json();
-  if(d.ok){leads=d.leads;drawScout();if(document.getElementById('pg-pipeline').classList.contains('on'))drawPipeline();log('s-feed','✓ All leads scored','gr');}
+  try{const r=await fetch('/api/leads/score',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  if(!r.ok){log('s-feed','Scoring failed ('+r.status+')','er');return;}
+  const d=await r.json();
+  if(d.ok){leads=d.leads;drawScout();if(document.getElementById('pg-pipeline').classList.contains('on'))drawPipeline();log('s-feed','✓ All leads scored','gr');}}catch(e){log('s-feed','Scoring failed: '+e.message,'er');}
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
