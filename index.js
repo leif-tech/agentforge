@@ -372,17 +372,17 @@ app.post('/api/builder/build-batch', async (req,res) => {
 
 // ── OUTREACH ──────────────────────────────────────────────────────────────
 app.post('/api/outreach/preview', async (req,res) => {
-  const { id } = req.body;
+  const { id, outreachType } = req.body;
   const f = findLead(id);
   if (!f) return res.status(404).json({ error:'Lead not found' });
   try {
-    const copy = await generateEmailPreview(f.lead, f.lead.previewUrl||getBase());
+    const copy = await generateEmailPreview(f.lead, f.lead.previewUrl||getBase(), outreachType);
     res.json({ ok:true, copy });
   } catch(e) { res.status(500).json({ error:e.message }); }
 });
 
 app.post('/api/outreach/send', async (req,res) => {
-  const { id, emailAddress, sessionId, subject, body, force } = req.body;
+  const { id, emailAddress, sessionId, subject, body, force, outreachType } = req.body;
   const f = findLead(id);
   if (!f) return res.status(404).json({ error:'Lead not found' });
   const { lead, index } = f;
@@ -406,7 +406,7 @@ app.post('/api/outreach/send', async (req,res) => {
       clickUrl: `${getBase()}/c/${trackingId}`
     };
 
-    const result = await sendOutreach(lead, previewUrl, emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body, trackingOpts);
+    const result = await sendOutreach(lead, previewUrl, emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body, trackingOpts, outreachType);
     // Only create tracking record AFTER successful send
     const trackRec = { trackingId, leadId:id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() };
     tracking.push(trackRec); save(TF, tracking);

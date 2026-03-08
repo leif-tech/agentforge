@@ -184,6 +184,160 @@ Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
 }
 
+function buildWebsiteOutreachPrompt(lead, type) {
+  const hasRating = lead.rating && lead.rating !== 'N/A';
+  const rating = parseFloat(lead.rating) || 0;
+  const reviews = parseInt(lead.reviews) || 0;
+
+  let ratingGuidance;
+  if (!hasRating) {
+    ratingGuidance = `No rating: do not mention stars. Hook on their niche or location presence.`;
+  } else if (rating >= 4.5) {
+    ratingGuidance = `4.5 and above (${lead.rating} stars, ${reviews} reviews): use the rating as the hook. Flip it ("all that trust is sitting there but nothing is working behind the scenes to bring people back").`;
+  } else if (rating >= 4.0) {
+    ratingGuidance = `4.0 to 4.5 (${lead.rating} stars, ${reviews} reviews): solid reputation but don't oversell it. Flip on "you've got the online storefront but nothing running behind it".`;
+  } else {
+    ratingGuidance = `Below 4.0 (${lead.rating} stars, ${reviews} reviews): skip rating entirely. Hook on niche, longevity, or what they actually do well.`;
+  }
+
+  const nicheFlips = {
+    cafe: `Someone visited last week, loved it, left a review. That's where it ends. No follow-up text, no "come back" message. They forget and try somewhere new.`,
+    coffee: `Someone visited last week, loved it, left a review. That's where it ends. No follow-up text, no "come back" message. They forget and try somewhere new.`,
+    restaurant: `A couple had a great dinner. Left 5 stars. Never heard from the restaurant again. Two weeks later they're trying somewhere else.`,
+    salon: `A client loved their cut. Told a friend. But there's no follow-up booking reminder, no content keeping the salon top of mind. The friend books elsewhere.`,
+    hair: `A client loved their cut. Told a friend. But there's no follow-up booking reminder, no content keeping the salon top of mind. The friend books elsewhere.`,
+    auto: `A customer got great service. Left a review. No follow-up, no reminder for their next oil change. They see an ad for a chain and go there instead.`,
+    yoga: `A new member loved their first class. But there's no check-in message after, no content keeping them engaged. They drift to another studio.`,
+    fitness: `A new member loved their first class. But there's no check-in message after, no content keeping them engaged. They drift to another studio.`,
+    gym: `A guy signs up for a week trial. Great experience. No follow-up text, no engagement. He quietly doesn't come back.`,
+    barbershop: `A regular comes in every 3 weeks. But there's no system reminding him, no content keeping the shop in his feed. One day he just tries somewhere closer.`,
+    barber: `A regular comes in every 3 weeks. But there's no system reminding him, no content keeping the shop in his feed. One day he just tries somewhere closer.`,
+    roofer: `A homeowner got a great roof job. Told a neighbor. But there's no system capturing that referral, no follow-up. The neighbor Googles and picks someone else.`,
+    contractor: `A homeowner got a great roof job. Told a neighbor. But there's no system capturing that referral, no follow-up. The neighbor Googles and picks someone else.`,
+    nail: `A client posts their nails on Instagram but tags no one. The salon has no content strategy, no follow-up. That free marketing just evaporates.`,
+    bakery: `Someone orders a birthday cake. Loves it. No follow-up for next year, no content keeping them engaged. They try a new bakery next time.`,
+    florist: `A guy orders flowers for Valentine's. Great experience. No follow-up for Mother's Day, no reminder. He orders from whoever shows up first online.`,
+    flower: `A guy orders flowers for Valentine's. Great experience. No follow-up for Mother's Day, no reminder. He orders from whoever shows up first online.`,
+    massage: `A client books a session, feels amazing. No follow-up, no rebooking nudge. Life gets busy and they don't come back for months.`,
+    spa: `A client books a session, feels amazing. No follow-up, no rebooking nudge. Life gets busy and they don't come back for months.`,
+    dentist: `A patient finishes their cleaning. No follow-up text, no reminder for 6 months. They procrastinate and eventually switch to whoever is convenient.`,
+    vet: `A pet owner had a great visit. No follow-up check-in, no vaccination reminder. They end up at a different vet next time.`,
+    cleaning: `A homeowner loved the deep clean. No follow-up, no recurring schedule offer. They forget the name and Google someone else next time.`,
+    default: `A customer has a great experience. Leaves a review. Never hears from the business again. Slowly forgets about them and moves on to whatever shows up next.`
+  };
+  const nicheKey = Object.keys(nicheFlips).find(k => type.toLowerCase().includes(k)) || 'default';
+  const flipExample = nicheFlips[nicheKey];
+
+  return `You are writing a cold outreach email on behalf of Leif from WebForge.
+
+CONTEXT:
+- Business name: ${lead.name}
+- Business type: ${type}
+- Address: ${lead.address}
+- Rating: ${hasRating ? lead.rating : 'no rating'}
+- Number of reviews: ${reviews}
+- This business ALREADY HAS a website. Do NOT offer to build them a website. Do NOT mention a demo site.
+
+PSYCHOLOGY DIRECTIVES:
+- Surface discomfort. People act on loss, not opportunity.
+- Reciprocity: Leif is offering a free audit and sample content. He's giving first.
+- Curiosity gap in the subject line. Make them need to open it.
+- Prize frame: this email feels personal and hand-written, not a blast.
+
+RATING-AWARE HOOK GUIDANCE:
+${ratingGuidance}
+
+NICHE-SPECIFIC FLIP EXAMPLE (use as inspiration, rewrite in your own words):
+"${flipExample}"
+
+EMAIL STRUCTURE - follow this exactly, in this order:
+
+1. HOOK
+- First line only. Start with "You" or "Your". Never start with "Hi" or any greeting.
+- Make one specific, true observation about their business (use rating, reviews, niche, or location).
+- Acknowledge they have a website. The gap is what's BEHIND the website: no follow-up system, no content engine, no review management.
+- Keep it to 1-2 sentences max.
+
+2. THE FLIP
+- Turn their strength into a tangible loss. Show them what is slipping through the cracks right now.
+- The problem isn't their website. The problem is what happens AFTER someone visits, buys, or leaves a review. Nothing. No follow-up, no re-engagement, no system.
+- Use the niche-specific scenario above to make it concrete and real.
+- 2-3 sentences max.
+
+3. THE BRIDGE (pivot sentence)
+This is the single sentence that transitions from the problem to the offer.
+
+PIVOT SENTENCE RULES:
+- Must close the loop on the exact problem described in The Flip above.
+- Echo a specific word or phrase already used in the email.
+- One sentence, punchy, no longer than 15 words.
+- NEVER use vague verbs like "prove it", "show it", "fix that", "change this" without a specific object.
+- BAD: "We can help with that." (vague)
+- GOOD: "We build the systems that turn one-time customers into regulars."
+- GOOD: "That follow-up message they never got? We automate that."
+
+4. THE OFFER LIST
+- Frame it as what WebForge does for businesses like theirs:
+  "Here's what we do for ${type}s like yours:"
+
+1. An automated customer follow-up system via text message or social media, this one runs while you sleep
+2. A ready-to-post Instagram caption written for your ${type}
+3. A professional response template for your Google reviews
+4. A full audit of your online presence, socials, and search visibility
+
+IMPORTANT: These are paid services we offer. Do not frame them as free. Let the list speak for itself.
+Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list.
+
+5. THE ASK
+- Exact framing: "All I need in return is 5-10 minutes."
+- One option only: hop on a quick call. The call is so we can learn about their business and what systems they're missing.
+- Do NOT offer "or just reply to this email" as an alternative. Keep it to the call only.
+- Low pressure. No urgency theater. One door, left open.
+- 2 sentences max.
+
+6. CLOSING LINE
+- One original line. Niche-specific. Must feel human.
+- BANNED phrase: "You've already done the hard part"
+- Do not summarize. Do not repeat anything already said. Just land it.
+
+7. SIGN-OFF
+Leif
+WebForge
+
+SUBJECT LINE RULES:
+- Use the business's actual review count as an anchor if available.
+- Imply a problem or gap in their SYSTEMS (not their website). The gap is automation, follow-up, content, not having a site.
+- Under 60 characters.
+- Create curiosity OR mild tension, ideally both.
+- Prefer concrete contrast over vague statements.
+- Winning formula: [Review count]. [Consequence they're experiencing with systems].
+  Example: "${reviews} reviews. Zero follow-up system."
+- Must be specific to THIS business.
+- No emojis. No exclamation marks. No ALL CAPS. No spam trigger words.
+- BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
+
+Generate 3 subject line options internally, ranked by curiosity score:
+- Safe: lowest risk, still curiosity-driven
+- Punchy: stronger tension, concrete contrast
+- Bold: most provocative, highest open potential
+Then pick the BEST one (Punchy or Bold preferred) and use it as the subject in your JSON output.
+
+HARD RULES:
+- No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
+- No exclamation marks. No semicolons.
+- Never start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
+- First word of the email must be "You" or "Your".
+- NEVER mention building a website, a demo site, or offering a free website. This business already has one.
+- BANNED words: "synergy", "leverage", "solutions", "partnership", "opportunity", "game-changer", "next level", "stand out", "competitive edge"
+- Each closing line must be unique and niche-specific. Never reuse across emails.
+- Under 150 words for the body (before the offer list). Total email under 200 words.
+- No pricing anywhere.
+- Must feel like a human wrote it, slightly imperfect, not polished AI copy.
+
+Return ONLY valid JSON with no extra text:
+{"subject":"...","body":"..."}`;
+}
+
 async function callAnthropicWithTimeout(client, params, timeoutMs = 60000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -242,24 +396,28 @@ Return ONLY valid JSON:
   return cleanCopy(result);
 }
 
-async function generateEmailCopy(lead, previewUrl) {
+async function generateEmailCopy(lead, previewUrl, outreachType) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
+  const prompt = outreachType === 'has_website'
+    ? buildWebsiteOutreachPrompt(lead, type)
+    : buildEmailPrompt(lead, previewUrl, type);
   const msg = await callAnthropicWithTimeout(client, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1000,
-    messages: [{ role: 'user', content: buildEmailPrompt(lead, previewUrl, type) }]
+    messages: [{ role: 'user', content: prompt }]
   });
   const result = parseJSON(msg.content[0].text);
   if (!result?.subject || !result?.body) throw new Error('Failed to generate email copy. Claude returned invalid or incomplete JSON. Try again.');
   return cleanCopy(result);
 }
 
-async function generateEmailPreview(lead, previewUrl) {
-  return generateEmailCopy(lead, previewUrl);
+async function generateEmailPreview(lead, previewUrl, outreachType) {
+  return generateEmailCopy(lead, previewUrl, outreachType);
 }
 
-async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts) {
+async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts, outreachType) {
+  const isHasWebsite = outreachType === 'has_website';
   onProgress({ status: 'generating', message: `Generating samples for ${lead.name}...` });
 
   let samples;
@@ -273,7 +431,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   const copy = (subjectOverride && bodyOverride)
     ? { subject: subjectOverride, body: bodyOverride }
-    : await generateEmailCopy(lead, previewUrl);
+    : await generateEmailCopy(lead, previewUrl, outreachType);
 
   const { RESEND_API_KEY, RESEND_FROM } = process.env;
   if (!RESEND_API_KEY) throw new Error('Resend API key not configured. Go to Settings.');
@@ -289,14 +447,18 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   let samplesHtml = '';
   if (samples) {
-    samplesHtml = `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
-        <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
-        <tr><td style="padding:28px 0 6px" colspan="2">
-          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">Your Free Website + What We Can Do</p>
-          <p style="font-size:12px;color:#888;margin:4px 0 0">The demo website below is yours, completely free. Here's a preview of the kind of work we do for businesses like yours.</p>
-        </td></tr>
+    const sectionTitle = isHasWebsite ? 'What We Can Do For Your Business' : 'Your Free Website + What We Can Do';
+    const sectionSubtitle = isHasWebsite
+      ? 'Here\'s a preview of the kind of work we do for businesses like yours.'
+      : 'The demo website below is yours, completely free. Here\'s a preview of the kind of work we do for businesses like yours.';
 
+    // Item numbering: has_website starts at 1 (no demo site card), no_website starts at 2 (demo site is 1)
+    const n1 = isHasWebsite ? 1 : 2;
+    const n2 = isHasWebsite ? 2 : 3;
+    const n3 = isHasWebsite ? 3 : 4;
+    const n4 = isHasWebsite ? 4 : 5;
+
+    const demoSiteCard = isHasWebsite ? '' : `
         <tr><td style="padding:20px 0 0" colspan="2">
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
             <tr>
@@ -312,7 +474,27 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
               <p style="font-size:11px;color:#888;margin:6px 0 0">This is yours to keep, no strings attached.</p>
             </td></tr>
           </table>
+        </td></tr>`;
+
+    const auditContent = isHasWebsite
+      ? `<strong style="color:#111">Website:</strong> You have a site, that's a solid foundation. The question is what's working behind it.<br><br>
+              <strong style="color:#111">Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews. Are you responding to all of them? Each one is a chance to build loyalty.' : 'Building a review presence can dramatically improve trust and local search ranking.'}<br><br>
+              <strong style="color:#111">Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
+              <strong style="color:#111">Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.`
+      : `<strong style="color:#111">Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
+              <strong style="color:#111">Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
+              <strong style="color:#111">Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
+              <strong style="color:#111">Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.`;
+
+    samplesHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
+        <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
+        <tr><td style="padding:28px 0 6px" colspan="2">
+          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">${sectionTitle}</p>
+          <p style="font-size:12px;color:#888;margin:4px 0 0">${sectionSubtitle}</p>
         </td></tr>
+
+        ${demoSiteCard}
 
         <tr><td style="padding:20px 0 4px" colspan="2">
           <p style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.1em;margin:0">Sample work we do for businesses like yours</p>
@@ -323,7 +505,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
             <tr>
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">2</td>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n1}</td>
                   <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Instagram Caption</td>
                 </tr></table>
               </td>
@@ -337,7 +519,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
             <tr>
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">3</td>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n2}</td>
                   <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Google Review Response</td>
                 </tr></table>
               </td>
@@ -351,7 +533,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
             <tr>
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">4</td>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n3}</td>
                   <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up via Text or Social</td>
                 </tr></table>
               </td>
@@ -365,16 +547,13 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
             <tr>
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">5</td>
+                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n4}</td>
                   <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Online Presence Audit</td>
                 </tr></table>
               </td>
             </tr>
             <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">
-              <strong style="color:#111">Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
-              <strong style="color:#111">Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
-              <strong style="color:#111">Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
-              <strong style="color:#111">Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.
+              ${auditContent}
             </td></tr>
           </table>
         </td></tr>
@@ -511,8 +690,9 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     </table>`
   });
 
-  onProgress({ status: 'sent', message: `Sent to ${emailAddress} with 5 free deliverables` });
-  return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id };
+  const deliverableCount = isHasWebsite ? 4 : 5;
+  onProgress({ status: 'sent', message: `Sent to ${emailAddress} with ${deliverableCount} deliverables` });
+  return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id, outreachType: outreachType || 'no_website' };
 }
 
 // ── FOLLOW-UP EMAIL GENERATION ────────────────────────────────────────────
