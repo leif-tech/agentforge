@@ -127,7 +127,7 @@ Then clarify: this is just a demo, it can be changed and customized however they
 - Then transition to additional services with a line like:
   "We also offer these, and many more:"
 
-1. An automated customer follow-up system via text message or social media, this one runs while you sleep
+1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM, this one runs while you sleep
 2. A ready-to-post Instagram caption written for your ${type}
 3. A professional response template for your Google reviews
 4. A full audit of your online presence, socials, and search visibility
@@ -280,7 +280,7 @@ PIVOT SENTENCE RULES:
 - Frame it as what WebForge does for businesses like theirs:
   "Here's what we do for ${type}s like yours:"
 
-1. An automated customer follow-up system via text message or social media, this one runs while you sleep
+1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM, this one runs while you sleep
 2. A ready-to-post Instagram caption written for your ${type}
 3. A professional response template for your Google reviews
 4. A full audit of your online presence, socials, and search visibility
@@ -534,7 +534,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
               <td style="padding:16px 20px 14px">
                 <table cellpadding="0" cellspacing="0" border="0"><tr>
                   <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n3}</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up via Text or Social</td>
+                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up via Text, Email, Facebook & Instagram</td>
                 </tr></table>
               </td>
             </tr>
