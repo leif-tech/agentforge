@@ -43,33 +43,58 @@ app.get('/login', (req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AgentForge — Login</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23060810'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='13' fill='%2300e5ff'>AF</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#060810;color:#f0f4ff;font-family:'Syne',sans-serif;height:100vh;display:flex;align-items:center;justify-content:center}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
-.card{background:#0b0f1a;border:1px solid #1e2a45;border-radius:16px;padding:48px 40px;width:100%;max-width:400px;position:relative}
-.logo{font-size:22px;font-weight:800;letter-spacing:.03em;margin-bottom:32px;text-align:center}
-.logo span{color:#00e5ff}
-label{display:block;font-size:11px;color:#4a5d80;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-input{width:100%;background:#060810;border:1px solid #1e2a45;border-radius:8px;padding:12px 14px;color:#f0f4ff;font-size:14px;outline:none;margin-bottom:20px;font-family:inherit}
-input:focus{border-color:#00e5ff}
-button{width:100%;background:#00e5ff;color:#060810;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.04em}
-button:hover{background:#00b8cc}
-.err{color:#ff4d6d;font-size:13px;margin-bottom:16px;text-align:center}
+body{background:#060810;color:#f0f4ff;font-family:'Inter',sans-serif;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+body::after{content:'';position:fixed;top:50%;left:50%;width:800px;height:800px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(0,229,255,.06) 0%,transparent 70%);pointer-events:none}
+.wrap{position:relative;z-index:1}
+.card{background:rgba(11,15,26,.85);backdrop-filter:blur(20px);border:1px solid rgba(30,42,69,.6);border-radius:20px;padding:52px 44px 44px;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.4),0 0 80px rgba(0,229,255,.03)}
+.logo-wrap{text-align:center;margin-bottom:36px}
+.logo-icon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#0a0e1a,#111830);border:1px solid rgba(0,229,255,.2);font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#00e5ff;letter-spacing:.02em;margin-bottom:14px;box-shadow:0 0 20px rgba(0,229,255,.08)}
+.logo-text{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:.04em}
+.logo-text em{font-style:normal;color:#00e5ff}
+.logo-sub{font-size:11px;color:#4a5d80;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+label{display:block;font-size:10.5px;color:#5a6d90;text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:7px}
+.field{position:relative;margin-bottom:22px}
+.field svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:#3a4d70;stroke-width:1.8;fill:none}
+input{width:100%;background:rgba(6,8,16,.7);border:1px solid rgba(30,42,69,.8);border-radius:10px;padding:13px 14px 13px 42px;color:#f0f4ff;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border .25s,box-shadow .25s}
+input:focus{border-color:rgba(0,229,255,.5);box-shadow:0 0 0 3px rgba(0,229,255,.08)}
+input::placeholder{color:#2d3a55}
+button{width:100%;background:linear-gradient(135deg,#00e5ff,#00b8d4);color:#060810;border:none;border-radius:10px;padding:14px;font-size:14px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:.03em;transition:all .2s;margin-top:6px;box-shadow:0 4px 16px rgba(0,229,255,.2)}
+button:hover{background:linear-gradient(135deg,#00f0ff,#00c8e0);box-shadow:0 4px 24px rgba(0,229,255,.35);transform:translateY(-1px)}
+button:active{transform:translateY(0)}
+.err{color:#ff4d6d;font-size:12px;margin-bottom:18px;text-align:center;padding:10px 14px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);border-radius:8px}
+.footer{text-align:center;margin-top:24px;font-size:10px;color:#2d3a55;letter-spacing:.06em}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card{animation:fadeIn .4s ease-out}
 </style>
 </head>
 <body>
+<div class="wrap">
 <div class="card">
-  <div class="logo">AGENT<span>FORGE</span></div>
+  <div class="logo-wrap">
+    <div class="logo-icon">AF</div>
+    <div class="logo-text">AGENT<em>FORGE</em></div>
+    <div class="logo-sub">Command Center</div>
+  </div>
   ${req.query.err ? '<div class="err">Invalid username or password.</div>' : ''}
   <form method="POST" action="/login">
     <label>Username</label>
-    <input type="text" name="username" autofocus autocomplete="username">
+    <div class="field">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <input type="text" name="username" placeholder="Enter username" autofocus autocomplete="username">
+    </div>
     <label>Password</label>
-    <input type="password" name="password" autocomplete="current-password">
-    <button type="submit">Sign In →</button>
+    <div class="field">
+      <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <input type="password" name="password" placeholder="Enter password" autocomplete="current-password">
+    </div>
+    <button type="submit">Sign In</button>
   </form>
+  <div class="footer">SECURED ACCESS</div>
+</div>
 </div>
 </body>
 </html>`);
