@@ -1368,7 +1368,7 @@ function oChg(){
   const info=document.getElementById('o-lead-info');
   if(lead){
     const ratingStr=lead.rating&&lead.rating!=='N/A'?'<span style="color:var(--amber)">★ '+lead.rating+'</span> <span style="color:var(--t3)">('+lead.reviews+' reviews)</span>':'<span style="color:var(--t4)">No rating</span>';
-    const webStr=lead.website?'<span style="color:var(--amber);font-weight:700">Has Website</span> <a href="'+lead.website+'" target="_blank" style="color:var(--cyan);font-size:9.5px;text-decoration:none;word-break:break-all">'+lead.website+'</a>':'<span style="color:var(--green);font-weight:700">No Website</span>';
+    const webStr=lead.website?'<span style="color:var(--amber);font-weight:700">Has Website</span> <a href="'+x(lead.website)+'" target="_blank" style="color:var(--cyan);font-size:9.5px;text-decoration:none;word-break:break-all">'+x(lead.website)+'</a>':'<span style="color:var(--green);font-weight:700">No Website</span>';
     const typeStr='<span style="color:var(--t2)">'+(lead.type||'').replace(/_/g,' ')+'</span>';
     info.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px 16px"><div>'+typeStr+'</div><div>'+ratingStr+'</div><div>'+webStr+'</div></div>';
     info.style.display='block';

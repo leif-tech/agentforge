@@ -605,9 +605,9 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     // Flush pending list before next paragraph
     if (inList) bodyHtml += flushList();
 
-    // URL-only line — render as a styled button/link
+    // URL-only line — render as a styled button/link (only for no-website outreach)
     const trimmedLine = line.trim();
-    if (trimmedLine.match(/^https?:\/\/\S+$/) && previewUrl && trimmedLine.includes(previewUrl.split('/')[2])) {
+    if (!isHasWebsite && trimmedLine.match(/^https?:\/\/\S+$/) && previewUrl && trimmedLine.includes(previewUrl.split('/')[2])) {
       const href = trackingOpts?.clickUrl || line;
       bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px">
         <tr><td>
@@ -633,8 +633,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       continue;
     }
 
-    // "This demo is yours" / free website line — highlight
-    if (/demo.*yours|for free|no cost|your real site/i.test(line)) {
+    // "This demo is yours" / free website line — highlight (only for no-website outreach)
+    if (!isHasWebsite && /demo.*yours|for free|no cost|your real site/i.test(line)) {
       bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px">
         <tr><td style="padding:14px 18px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0">
           <p style="margin:0;font-size:14px;line-height:1.7;color:#166534">${line}</p>

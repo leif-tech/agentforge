@@ -452,7 +452,8 @@ app.post('/api/outreach/batch', async (req,res) => {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
       };
-      const result = await sendOutreach(lead, previewUrl, email, () => {}, null, null, trackingOpts);
+      const autoType = lead.website ? 'has_website' : 'no_website';
+      const result = await sendOutreach(lead, previewUrl, email, () => {}, null, null, trackingOpts, autoType);
       // Only create tracking record AFTER successful send
       tracking.push({ trackingId, leadId:lead.id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
       save(TF, tracking);
@@ -504,7 +505,8 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
       };
-      const result = await sendOutreach(lead, previewUrl, email, ()=>{}, followUp.subject, followUp.body, trackingOpts);
+      const autoType = lead.website ? 'has_website' : 'no_website';
+      const result = await sendOutreach(lead, previewUrl, email, ()=>{}, followUp.subject, followUp.body, trackingOpts, autoType);
       // Only create tracking record AFTER successful send
       tracking.push({ trackingId, leadId:lead.id, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
       save(TF, tracking);
@@ -559,7 +561,8 @@ app.post('/api/scheduled/process', async (req,res) => {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
       };
-      const result = await sendOutreach(f.lead, previewUrl, s.emailAddress, ()=>{}, s.subject||null, s.body||null, trackingOpts);
+      const autoType = f.lead.website ? 'has_website' : 'no_website';
+      const result = await sendOutreach(f.lead, previewUrl, s.emailAddress, ()=>{}, s.subject||null, s.body||null, trackingOpts, autoType);
       // Only create tracking record AFTER successful send
       tracking.push({ trackingId, leadId:s.leadId, type:'scheduled', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
       save(TF, tracking);
@@ -639,7 +642,8 @@ app.post('/api/sequences/process', async (req,res) => {
           pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
           clickUrl: `${getBase()}/c/${trackingId}`
         };
-        await sendOutreach(f.lead, previewUrl, emailAddr, ()=>{}, followUp.subject, followUp.body, trackingOpts);
+        const autoType = f.lead.website ? 'has_website' : 'no_website';
+        await sendOutreach(f.lead, previewUrl, emailAddr, ()=>{}, followUp.subject, followUp.body, trackingOpts, autoType);
         // Only create tracking record AFTER successful send
         tracking.push({ trackingId, leadId:seq.leadId, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
         step.status='sent'; step.sentAt=new Date().toISOString();
