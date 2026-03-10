@@ -137,53 +137,9 @@ function getFollowUpExamples(type) {
 
 function buildEmailPrompt(lead, previewUrl, type) {
   const hasRating = lead.rating && lead.rating !== 'N/A';
-  const rating = parseFloat(lead.rating) || 0;
   const reviews = parseInt(lead.reviews) || 0;
 
-  // Rating-aware hook guidance
-  let ratingGuidance;
-  if (!hasRating) {
-    ratingGuidance = `No rating: do not mention stars. Hook on their niche or location presence.`;
-  } else if (rating >= 4.5) {
-    ratingGuidance = `4.5 and above (${lead.rating} stars, ${reviews} reviews): use the rating as the hook. Flip it ("all that trust is locked inside Google with nowhere to go").`;
-  } else if (rating >= 4.0) {
-    ratingGuidance = `4.0 to 4.5 (${lead.rating} stars, ${reviews} reviews): solid reputation but don't oversell it. Flip on "no place to send people who hear about you".`;
-  } else {
-    ratingGuidance = `Below 4.0 (${lead.rating} stars, ${reviews} reviews): skip rating entirely. Hook on niche, longevity, or what they actually do well.`;
-  }
-
-  // Niche-specific flip examples
-  const nicheFlips = {
-    cafe: `Someone hears about their cortado from a friend, searches the name, finds no website, clicks the competitor down the street instead.`,
-    coffee: `Someone hears about their cortado from a friend, searches the name, finds no website, clicks the competitor down the street instead.`,
-    restaurant: `A couple is choosing where to eat tonight. No menu online, no photos. They pick somewhere else.`,
-    salon: `A woman asks her friend where she got her cut. She searches the name. Nothing comes up that looks real. She books somewhere else.`,
-    hair: `A woman asks her friend where she got her cut. She searches the name. Nothing comes up that looks real. She books somewhere else.`,
-    auto: `Someone's car is making a noise. They search the shop name. No site. Looks closed or sketchy. They go to a chain.`,
-    yoga: `Someone just moved to the area. They search for yoga nearby. The listing has no class schedule, no vibe. They try the next one.`,
-    fitness: `Someone just moved to the area. They search for fitness nearby. The listing has no class schedule, no vibe. They try the next one.`,
-    gym: `A guy is ready to sign up. He searches, finds no site, can't see pricing or equipment. He signs up at the gym that had a website.`,
-    barbershop: `A dad wants a reliable spot for his son. He searches, finds just an address. No photos, no booking. He goes somewhere that looked more legit.`,
-    barber: `A dad wants a reliable spot for his son. He searches, finds just an address. No photos, no booking. He goes somewhere that looked more legit.`,
-    roofer: `A homeowner needs a quote. They found the name through a neighbor. No website. Looks unverified. They call someone else.`,
-    contractor: `A homeowner needs a quote. They found the name through a neighbor. No website. Looks unverified. They call someone else.`,
-    nail: `Someone wants to check the vibe before booking. No photos, no site. They book somewhere they could actually see first.`,
-    bakery: `Someone heard about the sourdough. They search the name. Just a map pin. No photos, no story. They scroll to the next result.`,
-    florist: `A guy needs flowers for an anniversary. No site, no gallery of arrangements. He orders from someone with photos.`,
-    flower: `A guy needs flowers for an anniversary. No site, no gallery of arrangements. He orders from someone with photos.`,
-    massage: `A woman wants to treat herself. She searches, finds only a phone number. Feels unsure. Books somewhere with a real site.`,
-    spa: `A woman wants to treat herself. She searches, finds only a phone number. Feels unsure. Books somewhere with a real site.`,
-    dental: `A family just moved in. They search for a dentist. No website, no info about the team. They pick the one that looked established.`,
-    dentist: `A family just moved in. They search for a dentist. No website, no info about the team. They pick the one that looked established.`,
-    vet: `A new pet owner is nervous. They search local vets. One has a site with the doctor's photo and approach. They call that one.`,
-    cleaning: `A homeowner wants to hire cleaners. They found the name through a neighbor. No site, no proof of work. They Google someone else.`,
-    default: `Someone hears about them. They search the name. Just a Google listing with an address and a phone number. No story, no details. They pick the next result.`
-  };
-  const sortedNicheKeys = Object.keys(nicheFlips).filter(k => k !== 'default').sort((a, b) => b.length - a.length);
-  const nicheKey = sortedNicheKeys.find(k => type.toLowerCase().includes(k)) || 'default';
-  const flipExample = nicheFlips[nicheKey];
-
-  return `You are writing a cold outreach email on behalf of Leif from WebForge.
+  return `You generate cold outreach emails for WebForge, a digital growth agency. You will receive business data and must output a single plain-text email. Nothing else, no explanation, no preamble, just the subject line and email body.
 
 CONTEXT:
 - Business name: ${lead.name}
@@ -192,108 +148,28 @@ CONTEXT:
 - Rating: ${hasRating ? lead.rating : 'no rating'}
 - Number of reviews: ${reviews}
 - Demo site URL: ${previewUrl}
+- This business has NO website.
 
-PSYCHOLOGY DIRECTIVES:
-- Surface discomfort. People act on loss, not opportunity.
-- Reciprocity: Leif already built them a free demo site. He gave first.
-- Curiosity gap in the subject line. Make them need to open it.
-- Prize frame: this email feels personal and hand-written, not a blast.
+INSTRUCTIONS:
+Goal: Get a reply by showing them a demo site you already built for them.
 
-RATING-AWARE HOOK GUIDANCE:
-${ratingGuidance}
+- Subject: reference their business name and make it feel personal
+- Line 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
+- Line 2: one sentence on the problem, people search their name and find nothing
+- Line 3: tell them you built a demo site, include ${previewUrl} as plain text
+- Line 4: say it's theirs to keep, no strings
+- CTA: soft, "just reply if you want to talk", do NOT ask for a call
+- Sign off: Leif, WebForge
+- Max length: 80 words
 
-NICHE-SPECIFIC FLIP EXAMPLE (use as inspiration, rewrite in your own words):
-"${flipExample}"
-
-EMAIL STRUCTURE - follow this exactly, in this order:
-
-1. HOOK
-- First line only. Start with "You" or "Your". Never start with "Hi" or any greeting.
-- Make one specific, true observation about their business (use rating, reviews, niche, or location).
-- Keep it to 1-2 sentences max.
-
-2. THE FLIP
-- Turn their strength into a tangible loss. Show them what is slipping through the cracks right now.
-- Use the niche-specific scenario above to make it concrete and real.
-- 2-3 sentences max.
-
-3. THE BRIDGE (pivot sentence)
-This is the single sentence that transitions from the problem to the offer. It carries the most weight in the email. If it's vague, the reader loses momentum right before the offer lands.
-
-PIVOT SENTENCE RULES:
-- Must close the loop on the exact problem described in The Flip above. Reference the specific loss or scenario you just painted.
-- Echo a specific word or phrase already used in the email (creates cohesion).
-- One sentence, punchy, no longer than 15 words.
-- NEVER use vague verbs like "prove it", "show it", "fix that", "change this" without a specific object. The reader should never have to guess what "it" refers to.
-- BAD: "We built you a demo website to prove it." (prove WHAT? vague antecedent)
-- GOOD: "We built you a demo website so people searching your name actually have somewhere to land."
-- GOOD: "We built you a demo site. Now that couple checking menus tonight can see yours."
-
-After the pivot sentence, drop the demo URL on its own line: ${previewUrl}
-Then clarify: this is just a demo, it can be changed and customized however they want, and we will build their real website for free.
-
-4. THE OFFER LIST
-- First, frame the demo website as the free offer:
-  "The demo website above is yours, for free. We'll turn it into your real site, customized however you want, at no cost."
-
-- Then transition to additional services with a line like:
-  "We also offer these, and many more:"
-
-1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM. For a ${type}, that means ${getFollowUpExamples(type).short}. This one runs while you sleep.
-2. A ready-to-post Instagram caption written for your ${type}
-3. A professional response template for your Google reviews
-4. A full audit of your online presence, socials, and search visibility
-
-After the list, add a line like: "And that's just the start. We do a lot more." Keep it casual and confident, not salesy.
-
-IMPORTANT: The website is free. The additional services (items 1-4) are paid services we offer. Do not frame them as free. Let the list speak for itself.
-Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list. Include the niche-specific example to make it concrete.
-
-5. THE ASK
-- First, frame it as: "We handle all of this for you." or "We can set all of this up for you." Make it clear that we DO the work, not just advise.
-- Then the ask: "If you're interested, all I need is 5-10 minutes on a quick call."
-- The call is so we can learn what they want on the website and figure out what they need.
-- Do NOT offer "or just reply to this email" as an alternative. Keep it to the call only.
-- Low pressure. No urgency theater. One door, left open.
-- 2-3 sentences max.
-
-6. CLOSING LINE
-- One original line. Niche-specific. Must feel human.
-- BANNED phrase: "You've already done the hard part"
-- Do not summarize. Do not repeat anything already said. Just land it.
-
-7. SIGN-OFF
-Leif
-WebForge
-
-SUBJECT LINE RULES:
-- Use the business's actual review count as an anchor. It makes the email feel researched, not mass-blasted.
-- Imply a problem or gap without being clickbait-y or alarmist.
-- Under 60 characters so it reads fully in email preview panes.
-- Create curiosity OR mild tension, ideally both.
-- Prefer concrete contrast over vague statements (e.g., "reviews vs. no website" not "missing out").
-- Winning formula (tested): [Review count]. [Consequence they're experiencing].
-  Example: "${reviews} reviews. Still losing clicks to competitors."
-- Must be specific to THIS business. Use their review count (${reviews}), name (${lead.name}), or niche (${type}).
-- No emojis. No ALL CAPS. No spam trigger words. Exclamation marks are allowed where they add energy or warmth, but use them sparingly (1-2 max in the whole email, never in the subject line).
-- BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
-
-Generate 3 subject line options internally, ranked by curiosity score:
-- Safe: lowest risk, still curiosity-driven
-- Punchy: stronger tension, concrete contrast
-- Bold: most provocative, highest open potential
-Then pick the BEST one (Punchy or Bold preferred) and use it as the subject in your JSON output.
-
-HARD RULES:
-- No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
-- No semicolons. Exclamation marks are OK where they feel natural and add warmth or energy, but never more than 2 in the whole email.
-- Never start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
-- First word of the email must be "You" or "Your".
-- BANNED words: "synergy", "leverage", "solutions", "partnership", "opportunity", "game-changer", "next level", "stand out", "competitive edge"
-- Each closing line must be unique and niche-specific. Never reuse across emails.
-- Under 150 words for the body (before the offer list). Total email under 200 words.
-- No pricing anywhere.
-- Must feel like a human wrote it, slightly imperfect, not polished AI copy.
+RULES:
+- Plain text only, no bullet points, bold, headers, or HTML
+- No "I hope this email finds you well" or "I came across your business"
+- No corporate words, no leverage, synergy, solutions, or optimize
+- Do not mention WebForge in the body, only in the sign-off
+- Do not list multiple services, one problem, one solution, one ask
+- Write like a real person emailing one specific business, not a mass campaign
+- Every sentence must earn its place, cut anything that doesn't add value
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
@@ -301,51 +177,9 @@ Return ONLY valid JSON with no extra text:
 
 function buildWebsiteOutreachPrompt(lead, type) {
   const hasRating = lead.rating && lead.rating !== 'N/A';
-  const rating = parseFloat(lead.rating) || 0;
   const reviews = parseInt(lead.reviews) || 0;
 
-  let ratingGuidance;
-  if (!hasRating) {
-    ratingGuidance = `No rating: do not mention stars. Hook on their niche or location presence.`;
-  } else if (rating >= 4.5) {
-    ratingGuidance = `4.5 and above (${lead.rating} stars, ${reviews} reviews): use the rating as the hook. Flip it ("all that trust is sitting there but nothing is working behind the scenes to bring people back").`;
-  } else if (rating >= 4.0) {
-    ratingGuidance = `4.0 to 4.5 (${lead.rating} stars, ${reviews} reviews): solid reputation but don't oversell it. Flip on "you've got the online storefront but nothing running behind it".`;
-  } else {
-    ratingGuidance = `Below 4.0 (${lead.rating} stars, ${reviews} reviews): skip rating entirely. Hook on niche, longevity, or what they actually do well.`;
-  }
-
-  const nicheFlips = {
-    cafe: `Someone visited last week, loved it, left a review. That's where it ends. No follow-up text, no "come back" message. They forget and try somewhere new.`,
-    coffee: `Someone visited last week, loved it, left a review. That's where it ends. No follow-up text, no "come back" message. They forget and try somewhere new.`,
-    restaurant: `A couple had a great dinner. Left 5 stars. Never heard from the restaurant again. Two weeks later they're trying somewhere else.`,
-    salon: `A client loved their cut. Told a friend. But there's no follow-up booking reminder, no content keeping the salon top of mind. The friend books elsewhere.`,
-    hair: `A client loved their cut. Told a friend. But there's no follow-up booking reminder, no content keeping the salon top of mind. The friend books elsewhere.`,
-    auto: `A customer got great service. Left a review. No follow-up, no reminder for their next oil change. They see an ad for a chain and go there instead.`,
-    yoga: `A new member loved their first class. But there's no check-in message after, no content keeping them engaged. They drift to another studio.`,
-    fitness: `A new member loved their first class. But there's no check-in message after, no content keeping them engaged. They drift to another studio.`,
-    gym: `A guy signs up for a week trial. Great experience. No follow-up text, no engagement. He quietly doesn't come back.`,
-    barbershop: `A regular comes in every 3 weeks. But there's no system reminding him, no content keeping the shop in his feed. One day he just tries somewhere closer.`,
-    barber: `A regular comes in every 3 weeks. But there's no system reminding him, no content keeping the shop in his feed. One day he just tries somewhere closer.`,
-    roofer: `A homeowner got a great roof job. Told a neighbor. But there's no system capturing that referral, no follow-up. The neighbor Googles and picks someone else.`,
-    contractor: `A homeowner got a great roof job. Told a neighbor. But there's no system capturing that referral, no follow-up. The neighbor Googles and picks someone else.`,
-    nail: `A client posts their nails on Instagram but tags no one. The salon has no content strategy, no follow-up. That free marketing just evaporates.`,
-    bakery: `Someone orders a birthday cake. Loves it. No follow-up for next year, no content keeping them engaged. They try a new bakery next time.`,
-    florist: `A guy orders flowers for Valentine's. Great experience. No follow-up for Mother's Day, no reminder. He orders from whoever shows up first online.`,
-    flower: `A guy orders flowers for Valentine's. Great experience. No follow-up for Mother's Day, no reminder. He orders from whoever shows up first online.`,
-    massage: `A client books a session, feels amazing. No follow-up, no rebooking nudge. Life gets busy and they don't come back for months.`,
-    spa: `A client books a session, feels amazing. No follow-up, no rebooking nudge. Life gets busy and they don't come back for months.`,
-    dental: `A patient finishes their cleaning. No follow-up text, no reminder for 6 months. They procrastinate and eventually switch to whoever is convenient.`,
-    dentist: `A patient finishes their cleaning. No follow-up text, no reminder for 6 months. They procrastinate and eventually switch to whoever is convenient.`,
-    vet: `A pet owner had a great visit. No follow-up check-in, no vaccination reminder. They end up at a different vet next time.`,
-    cleaning: `A homeowner loved the deep clean. No follow-up, no recurring schedule offer. They forget the name and Google someone else next time.`,
-    default: `A customer has a great experience. Leaves a review. Never hears from the business again. Slowly forgets about them and moves on to whatever shows up next.`
-  };
-  const sortedNicheKeys = Object.keys(nicheFlips).filter(k => k !== 'default').sort((a, b) => b.length - a.length);
-  const nicheKey = sortedNicheKeys.find(k => type.toLowerCase().includes(k)) || 'default';
-  const flipExample = nicheFlips[nicheKey];
-
-  return `You are writing a cold outreach email on behalf of Leif from WebForge.
+  return `You generate cold outreach emails for WebForge, a digital growth agency. You will receive business data and must output a single plain-text email. Nothing else, no explanation, no preamble, just the subject line and email body.
 
 CONTEXT:
 - Business name: ${lead.name}
@@ -353,106 +187,30 @@ CONTEXT:
 - Address: ${lead.address}
 - Rating: ${hasRating ? lead.rating : 'no rating'}
 - Number of reviews: ${reviews}
-- This business ALREADY HAS a website. Do NOT offer to build them a website. Do NOT mention a demo site.
+- Industry: ${type}
+- City: ${lead.address}
+- This business ALREADY HAS a website.
 
-PSYCHOLOGY DIRECTIVES:
-- Surface discomfort. People act on loss, not opportunity.
-- Reciprocity: Leif is offering a free audit and sample content. He's giving first.
-- Curiosity gap in the subject line. Make them need to open it.
-- Prize frame: this email feels personal and hand-written, not a blast.
+INSTRUCTIONS:
+Goal: Get a reply by identifying a problem they recognize and offering one concrete solution.
 
-RATING-AWARE HOOK GUIDANCE:
-${ratingGuidance}
+- Subject: "Quick question about ${lead.name}" or a curiosity-driven line about their specific situation
+- Line 1: mention you found them while looking at ${type} businesses in their area, sounds like genuine research
+- Line 2: say something specific and positive about their reviews or rating
+- Line 3: name the ONE problem, customers don't return because there's no follow-up after the first visit
+- Line 4: pitch the ONE solution, automated follow-up texts/emails after each job, seasonal reminders, runs itself
+- CTA: soft yes/no question, "Would it be useful if I showed you what this looks like for a ${type}?"
+- Sign off: Leif, WebForge
+- Max length: 100 words
 
-NICHE-SPECIFIC FLIP EXAMPLE (use as inspiration, rewrite in your own words):
-"${flipExample}"
-
-EMAIL STRUCTURE - follow this exactly, in this order:
-
-1. HOOK
-- First line only. Start with "You" or "Your". Never start with "Hi" or any greeting.
-- Make one specific, true observation about their business (use rating, reviews, niche, or location).
-- Acknowledge they have a website. The gap is what's BEHIND the website: no follow-up system, no content engine, no review management.
-- Keep it to 1-2 sentences max.
-
-2. THE FLIP
-- Turn their strength into a tangible loss. Show them what is slipping through the cracks right now.
-- The problem isn't their website. The problem is what happens AFTER someone visits, buys, or leaves a review. Nothing. No follow-up, no re-engagement, no system.
-- Use the niche-specific scenario above to make it concrete and real.
-- 2-3 sentences max.
-
-3. THE BRIDGE (pivot sentence)
-This is the single sentence that transitions from the problem to the offer.
-
-PIVOT SENTENCE RULES:
-- Must close the loop on the exact problem described in The Flip above.
-- Echo a specific word or phrase already used in the email.
-- One sentence, punchy, no longer than 15 words.
-- NEVER use vague verbs like "prove it", "show it", "fix that", "change this" without a specific object.
-- BAD: "We can help with that." (vague)
-- GOOD: "We build the systems that turn one-time customers into regulars."
-- GOOD: "That follow-up message they never got? We automate that."
-
-4. THE OFFER LIST
-- Frame it as what WebForge does for businesses like theirs:
-  "Here's what we do for ${type}s like yours:"
-
-1. An automated customer follow-up system via text message, email, Facebook DM, or Instagram DM. For a ${type}, that means ${getFollowUpExamples(type).short}. This one runs while you sleep.
-2. A ready-to-post Instagram caption written for your ${type}
-3. A professional response template for your Google reviews
-4. A full audit of your online presence, socials, and search visibility
-
-After the list, add a line like: "And that's just the start. We do a lot more." Keep it casual and confident, not salesy.
-
-IMPORTANT: These are paid services we offer. Do not frame them as free. Let the list speak for itself.
-Item 1 (the follow-up system) is the anchor. It must feel like the most valuable thing on the list. Include the niche-specific example to make it concrete.
-
-5. THE ASK
-- First, frame it as: "We handle all of this for you." or "We can set all of this up for you." Make it clear that we DO the work, not just advise.
-- Then the ask: "If you're interested, all I need is 5-10 minutes on a quick call."
-- The call is so we can learn about their business and figure out what they need.
-- Do NOT offer "or just reply to this email" as an alternative. Keep it to the call only.
-- Low pressure. No urgency theater. One door, left open.
-- 2-3 sentences max.
-
-6. CLOSING LINE
-- One original line. Niche-specific. Must feel human.
-- BANNED phrase: "You've already done the hard part"
-- Do not summarize. Do not repeat anything already said. Just land it.
-
-7. SIGN-OFF
-Leif
-WebForge
-
-SUBJECT LINE RULES:
-- Use the business's actual review count as an anchor if available.
-- Imply a problem or gap in their SYSTEMS (not their website). The gap is automation, follow-up, content, not having a site.
-- Under 60 characters.
-- Create curiosity OR mild tension, ideally both.
-- Prefer concrete contrast over vague statements.
-- Winning formula: [Review count]. [Consequence they're experiencing with systems].
-  Example: "${reviews} reviews. Zero follow-up system."
-- Must be specific to THIS business.
-- No emojis. No ALL CAPS. No spam trigger words. Exclamation marks are allowed where they add energy or warmth, but use them sparingly (1-2 max in the whole email, never in the subject line).
-- BANNED phrases: "quick question", "partnership", "opportunity", "reaching out", "your website", "free website", "I built", "I made", "I noticed", "checking in"
-
-Generate 3 subject line options internally, ranked by curiosity score:
-- Safe: lowest risk, still curiosity-driven
-- Punchy: stronger tension, concrete contrast
-- Bold: most provocative, highest open potential
-Then pick the BEST one (Punchy or Bold preferred) and use it as the subject in your JSON output.
-
-HARD RULES:
-- No em dashes anywhere in subject or body. Use commas, periods, or line breaks instead.
-- No semicolons. Exclamation marks are OK where they feel natural and add warmth or energy, but never more than 2 in the whole email.
-- Never start with "Hi", "Hey", "Hello", or any greeting. Start directly with the hook.
-- First word of the email must be "You" or "Your".
-- NEVER mention building a website, a demo site, or offering a free website. This business already has one.
-- BANNED words: "synergy", "leverage", "solutions", "partnership", "opportunity", "game-changer", "next level", "stand out", "competitive edge"
-- Each closing line must be unique and niche-specific. Never reuse across emails.
-- Under 150 words for the body (before the offer list). Total email under 200 words.
-- No pricing anywhere.
-- Must feel like a human wrote it, slightly imperfect, not polished AI copy.
+RULES:
+- Plain text only, no bullet points, bold, headers, or HTML
+- No "I hope this email finds you well" or "I came across your business"
+- No corporate words, no leverage, synergy, solutions, or optimize
+- Do not mention WebForge in the body, only in the sign-off
+- Do not list multiple services, one problem, one solution, one ask
+- Write like a real person emailing one specific business, not a mass campaign
+- Every sentence must earn its place, cut anything that doesn't add value
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
