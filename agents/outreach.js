@@ -213,6 +213,7 @@ RULES:
 - Every sentence must earn its place, cut anything that doesn't add value
 - Do not start with "Hi there" or any generic greeting. Either use the owner's name if available, or skip the greeting entirely and start directly with the first observation about their business.
 - Do not use the phrases "lifting a finger", "runs while you sleep", "set it and forget it", or any other cliché. Describe the solution simply and plainly.
+- When referencing the business type in the opening line, never use the word "businesses" after the industry type. Instead use the natural word for that industry — for example "chiropractor practices" not "chiropractor businesses", "dental offices" not "dental businesses", "landscaping companies" not "landscaping businesses", "restaurants" not "restaurant businesses". If unsure of the natural word, just use the plural of the business type alone — "chiropractors in the area" not "chiropractor businesses in the area."
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
