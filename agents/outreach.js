@@ -154,13 +154,15 @@ INSTRUCTIONS:
 Goal: Get a reply by showing them a demo site you already built for them.
 
 - Subject: 2-5 words maximum. Must reference something specific and real about their business — their review count, rating, or a pain point tied to having no website. Should feel like an observation, not a sales pitch. Do not use "Quick question". Do not use "help". Use lowercase except for business name or proper nouns. Examples: "${reviews} reviews, no website", "your customers can't find you", "${lead.name} deserves a site", "${lead.rating} stars but invisible online". Make the owner feel like you specifically noticed something about their business.
-- Line 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
-- Line 2: one sentence on the problem, people search their name and find nothing
-- Line 3: tell them you built a demo site for them. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text.
-- Line 4: say it's theirs to keep, completely free. All you'd ask for in return is 5 minutes on a quick call so you can learn what's not working in their business and see if there's anything else you can help with.
-- CTA: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick look?", "Sound fair?", "Want to see it?". Must be under 8 words. The goal is just to get a reply.
-- Sign off: Leif, WebForge
+- Paragraph 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
+- Paragraph 2: one sentence on the problem, people search their name and find nothing
+- Paragraph 3: tell them you built a demo site for them. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text. Say it's theirs to keep, completely free.
+- Paragraph 4: all you'd ask for in return is 5 minutes on a quick call so you can learn what's not working in their business and see if there's anything else you can help with.
+- Paragraph 5: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick look?", "Sound fair?", "Want to see it?". Must be under 8 words. The goal is just to get a reply.
+- Sign off: Leif on one line, WebForge on the next line.
 - Max length: 90 words
+
+CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought.
 
 RULES:
 - Plain text only, no bullet points, bold, headers, or HTML
@@ -195,14 +197,15 @@ INSTRUCTIONS:
 Goal: Get a reply by identifying a problem they recognize and offering one concrete solution.
 
 - Subject: 2-5 words maximum. Must reference something specific and real about their business — their review count, rating, or a specific pain point tied to their industry. Should feel like an observation, not a sales pitch. Do not use "Quick question". Do not use "help". Use lowercase except for business name or proper nouns. Examples: "${reviews} reviews, no follow-up system", "your patients aren't coming back", "${type}s in the area are losing repeats", "${lead.rating} stars, losing regulars". Make the owner feel like you specifically noticed something about their business.
-- Line 1: mention you found them while looking at ${type} businesses in their area, sounds like genuine research
-- Line 2: say something specific and positive about their reviews or rating
-- Line 3: state the problem in one clean direct sentence. Something like "Most ${type} customers don't come back simply because they never hear from you after that first visit, that's the biggest reason people drift to competitors." Do not use phrases like "Here's what I'm seeing happen though" or any lead-in that softens the point. Just state it directly.
-- Line 4: pitch the ONE solution, automated follow-up texts or emails after each appointment, seasonal reminders, check-ins. Describe it simply and plainly.
-- Line 5: say all you'd need is 5 minutes on a quick call to learn what's not working in their business and see if there's anything you can help with. Keep it casual and low pressure.
-- CTA: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick chat?", "Sound familiar?", "Is this a problem for you?". Must be under 8 words. The goal is just to get a reply.
-- Sign off: Leif, WebForge
+- Paragraph 1: mention you found them while looking at ${type} businesses in their area and say something specific and positive about their reviews or rating. This should read as one natural opening thought.
+- Paragraph 2: state the problem in one clean direct sentence. Something like "Most ${type} customers don't come back simply because they never hear from you after that first visit, that's the biggest reason people drift to competitors." Do not use phrases like "Here's what I'm seeing happen though" or any lead-in that softens the point. Just state it directly.
+- Paragraph 3: pitch the ONE solution, automated follow-up texts or emails after each appointment, seasonal reminders, check-ins. Describe it simply and plainly.
+- Paragraph 4: say all you'd need is 5 minutes on a quick call to learn what's not working in their business and see if there's anything you can help with. Keep it casual and low pressure.
+- Paragraph 5: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick chat?", "Sound familiar?", "Is this a problem for you?". Must be under 8 words. The goal is just to get a reply.
+- Sign off: Leif on one line, WebForge on the next line.
 - Max length: 110 words
+
+CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought.
 
 RULES:
 - Plain text only, no bullet points, bold, headers, or HTML
