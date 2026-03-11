@@ -197,8 +197,8 @@ Goal: Get a reply by identifying a problem they recognize and offering one concr
 - Subject: "Quick question about ${lead.name}" or a curiosity-driven line about their specific situation
 - Line 1: mention you found them while looking at ${type} businesses in their area, sounds like genuine research
 - Line 2: say something specific and positive about their reviews or rating
-- Line 3: name the ONE problem, customers don't return because there's no follow-up after the first visit
-- Line 4: pitch the ONE solution, automated follow-up texts/emails after each job, seasonal reminders, runs itself
+- Line 3: state the problem in one clean direct sentence. Something like "Most ${type} customers don't come back simply because they never hear from you after that first visit, that's the biggest reason people drift to competitors." Do not use phrases like "Here's what I'm seeing happen though" or any lead-in that softens the point. Just state it directly.
+- Line 4: pitch the ONE solution, automated follow-up texts or emails after each appointment, seasonal reminders, check-ins. Describe it simply and plainly.
 - CTA: soft yes/no question, "Would it be useful if I showed you what this looks like for a ${type}?"
 - Sign off: Leif, WebForge
 - Max length: 100 words
@@ -211,6 +211,8 @@ RULES:
 - Do not list multiple services, one problem, one solution, one ask
 - Write like a real person emailing one specific business, not a mass campaign
 - Every sentence must earn its place, cut anything that doesn't add value
+- Do not start with "Hi there" or any generic greeting. Either use the owner's name if available, or skip the greeting entirely and start directly with the first observation about their business.
+- Do not use the phrases "lifting a finger", "runs while you sleep", "set it and forget it", or any other cliché. Describe the solution simply and plainly.
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
