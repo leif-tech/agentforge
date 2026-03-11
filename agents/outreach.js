@@ -153,12 +153,12 @@ CONTEXT:
 INSTRUCTIONS:
 Goal: Get a reply by showing them a demo site you already built for them.
 
-- Subject: reference their business name and make it feel personal
+- Subject: 2-5 words maximum. Must reference something specific and real about their business — their review count, rating, or a pain point tied to having no website. Should feel like an observation, not a sales pitch. Do not use "Quick question". Do not use "help". Use lowercase except for business name or proper nouns. Examples: "${reviews} reviews, no website", "your customers can't find you", "${lead.name} deserves a site", "${lead.rating} stars but invisible online". Make the owner feel like you specifically noticed something about their business.
 - Line 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
 - Line 2: one sentence on the problem, people search their name and find nothing
 - Line 3: tell them you built a demo site, include ${previewUrl} as plain text
 - Line 4: say it's theirs to keep, no strings
-- CTA: soft, "just reply if you want to talk", do NOT ask for a call
+- CTA: end with one short soft question that feels conversational and low stakes. The question should be about whether the problem resonates, not about booking anything. Examples: "Is this something you've been running into?", "Does this sound familiar?", "Worth a quick look?", "Is this a problem for you?". Must be under 8 words. Do not ask for a call. Do not ask them to book anything. Do not use "Would it be useful if". The goal is just to get a reply.
 - Sign off: Leif, WebForge
 - Max length: 80 words
 
@@ -194,12 +194,12 @@ CONTEXT:
 INSTRUCTIONS:
 Goal: Get a reply by identifying a problem they recognize and offering one concrete solution.
 
-- Subject: "Quick question about ${lead.name}" or a curiosity-driven line about their specific situation
+- Subject: 2-5 words maximum. Must reference something specific and real about their business — their review count, rating, or a specific pain point tied to their industry. Should feel like an observation, not a sales pitch. Do not use "Quick question". Do not use "help". Use lowercase except for business name or proper nouns. Examples: "${reviews} reviews, no follow-up system", "your patients aren't coming back", "${type}s in the area are losing repeats", "${lead.rating} stars, losing regulars". Make the owner feel like you specifically noticed something about their business.
 - Line 1: mention you found them while looking at ${type} businesses in their area, sounds like genuine research
 - Line 2: say something specific and positive about their reviews or rating
 - Line 3: state the problem in one clean direct sentence. Something like "Most ${type} customers don't come back simply because they never hear from you after that first visit, that's the biggest reason people drift to competitors." Do not use phrases like "Here's what I'm seeing happen though" or any lead-in that softens the point. Just state it directly.
 - Line 4: pitch the ONE solution, automated follow-up texts or emails after each appointment, seasonal reminders, check-ins. Describe it simply and plainly.
-- CTA: soft yes/no question, "Would it be useful if I showed you what this looks like for a ${type}?"
+- CTA: end with one short soft question that feels conversational and low stakes. The question should be about whether the problem resonates, not about booking anything. Examples: "Is this something you've been running into?", "Does this sound familiar?", "Worth a quick look?", "Is this a problem for you?". Must be under 8 words. Do not ask for a call. Do not ask them to book anything. Do not use "Would it be useful if". The goal is just to get a reply.
 - Sign off: Leif, WebForge
 - Max length: 100 words
 
