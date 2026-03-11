@@ -156,11 +156,11 @@ Goal: Get a reply by showing them a demo site you already built for them.
 - Subject: 2-5 words maximum. Must reference something specific and real about their business — their review count, rating, or a pain point tied to having no website. Should feel like an observation, not a sales pitch. Do not use "Quick question". Do not use "help". Use lowercase except for business name or proper nouns. Examples: "${reviews} reviews, no website", "your customers can't find you", "${lead.name} deserves a site", "${lead.rating} stars but invisible online". Make the owner feel like you specifically noticed something about their business.
 - Paragraph 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
 - Paragraph 2: one sentence on the problem, people search their name and find nothing
-- Paragraph 3: tell them you built a demo site for them. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text. Say it's theirs to keep, completely free.
+- Paragraph 3: tell them you built a demo site for them. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text. Say it's just a starting point, a quick demo to show what's possible, and it can be fully customized to match their brand. It's theirs to keep, completely free.
 - Paragraph 4: frame the 5-minute call as an exchange. The website is free, and all you need in return is 5 minutes on a call to customize it for their business. Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring." Instead say something like "All I'd ask in return is 5 minutes on a call so I can build it around how your business actually runs." Keep it casual and specific.
-- Paragraph 5: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick look?", "Sound fair?", "Want to see it?". Must be under 8 words. The goal is just to get a reply.
+- Paragraph 5: end with one short soft question about the call, not about viewing the site (there's already a button for that). Examples: "Sound fair?", "Worth 5 minutes?", "Interested?". Must be under 8 words. Do NOT say "Want to see it?" or "Worth a quick look?" since the demo button is already there. The goal is just to get a reply about the call.
 - Sign off: MUST end with Leif on its own line, then WebForge on the next line. This is required, never skip it.
-- Max length: 90 words
+- Max length: 100 words
 
 CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought. The sign-off (Leif and WebForge) must always be present at the end.
 
