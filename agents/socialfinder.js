@@ -21,14 +21,15 @@ function httpsGet(url) {
 }
 
 // Fetch a URL and return raw HTML (follows redirects, timeout 8s)
-function fetchPage(url) {
+function fetchPage(url, maxRedirects = 5) {
   return new Promise((resolve, reject) => {
+    if (maxRedirects <= 0) return reject(new Error('Too many redirects'));
     const timer = setTimeout(() => reject(new Error('Timeout')), 8000);
     const client = url.startsWith('https') ? https : http;
     client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AgentForge/1.0)' } }, res => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         clearTimeout(timer);
-        return fetchPage(res.headers.location).then(resolve).catch(reject);
+        return fetchPage(res.headers.location, maxRedirects - 1).then(resolve).catch(reject);
       }
       let data = '';
       res.on('data', chunk => { data += chunk; if (data.length > 500000) { res.destroy(); clearTimeout(timer); resolve(data); } });

@@ -133,7 +133,7 @@ let migrated = false;
 leads.forEach(l => {
   if (!l.id) { l.id = randomUUID(); migrated = true; }
   if (l.previewUrl && l.previewUrl.includes('ngrok') && l.siteFile) {
-    l.previewUrl = `http://localhost:${PORT}/sites/${l.siteFile}`;
+    l.previewUrl = `${getBase()}/sites/${l.siteFile}`;
     migrated = true;
   }
 });
