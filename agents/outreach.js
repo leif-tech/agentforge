@@ -351,22 +351,6 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       continue;
     }
 
-    // "We also offer" or transition lines — subtle label style
-    if (/we also offer|and many more/i.test(line)) {
-      bodyHtml += `<p style="margin:24px 0 12px;font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em">${line}</p>`;
-      continue;
-    }
-
-    // "This demo is yours" / free website line — highlight (only for no-website outreach)
-    if (!isHasWebsite && /demo.*yours|for free|no cost|your real site/i.test(line)) {
-      bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px">
-        <tr><td style="padding:14px 18px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 6px 6px 0">
-          <p style="margin:0;font-size:14px;line-height:1.7;color:#166534">${line}</p>
-        </td></tr>
-      </table>`;
-      continue;
-    }
-
     // "All I need" / the ask — slightly emphasized
     if (/all i need|5-10 minutes|5 minutes|hop on a quick call|quick call/i.test(line)) {
       bodyHtml += `<p style="margin:24px 0 18px;font-size:15px;line-height:1.75;color:#111;font-weight:500">${line}</p>`;
