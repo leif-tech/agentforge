@@ -156,11 +156,11 @@ Goal: Get a reply by showing them a demo site you already built for them.
 - Subject: 2-5 words maximum. Must reference something specific and real about their business — their review count, rating, or a pain point tied to having no website. Should feel like an observation, not a sales pitch. Do not use "Quick question". Do not use "help". Use lowercase except for business name or proper nouns. Examples: "${reviews} reviews, no website", "your customers can't find you", "${lead.name} deserves a site", "${lead.rating} stars but invisible online". Make the owner feel like you specifically noticed something about their business.
 - Line 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
 - Line 2: one sentence on the problem, people search their name and find nothing
-- Line 3: tell them you built a demo site, include ${previewUrl} as plain text
-- Line 4: say it's theirs to keep, no strings
-- CTA: end with one short soft question that feels conversational and low stakes. The question should be about whether the problem resonates, not about booking anything. Examples: "Is this something you've been running into?", "Does this sound familiar?", "Worth a quick look?", "Is this a problem for you?". Must be under 8 words. Do not ask for a call. Do not ask them to book anything. Do not use "Would it be useful if". The goal is just to get a reply.
+- Line 3: tell them you built a demo site for them. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text.
+- Line 4: say it's theirs to keep, completely free. All you'd ask for in return is 5 minutes on a quick call so you can learn what's not working in their business and see if there's anything else you can help with.
+- CTA: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick look?", "Sound fair?", "Want to see it?". Must be under 8 words. The goal is just to get a reply.
 - Sign off: Leif, WebForge
-- Max length: 80 words
+- Max length: 90 words
 
 RULES:
 - Plain text only, no bullet points, bold, headers, or HTML
@@ -199,9 +199,10 @@ Goal: Get a reply by identifying a problem they recognize and offering one concr
 - Line 2: say something specific and positive about their reviews or rating
 - Line 3: state the problem in one clean direct sentence. Something like "Most ${type} customers don't come back simply because they never hear from you after that first visit, that's the biggest reason people drift to competitors." Do not use phrases like "Here's what I'm seeing happen though" or any lead-in that softens the point. Just state it directly.
 - Line 4: pitch the ONE solution, automated follow-up texts or emails after each appointment, seasonal reminders, check-ins. Describe it simply and plainly.
-- CTA: end with one short soft question that feels conversational and low stakes. The question should be about whether the problem resonates, not about booking anything. Examples: "Is this something you've been running into?", "Does this sound familiar?", "Worth a quick look?", "Is this a problem for you?". Must be under 8 words. Do not ask for a call. Do not ask them to book anything. Do not use "Would it be useful if". The goal is just to get a reply.
+- Line 5: say all you'd need is 5 minutes on a quick call to learn what's not working in their business and see if there's anything you can help with. Keep it casual and low pressure.
+- CTA: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick chat?", "Sound familiar?", "Is this a problem for you?". Must be under 8 words. The goal is just to get a reply.
 - Sign off: Leif, WebForge
-- Max length: 100 words
+- Max length: 110 words
 
 RULES:
 - Plain text only, no bullet points, bold, headers, or HTML
@@ -331,16 +332,13 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
     }
 
-    // URL-only line — render as a styled button/link (only for no-website outreach)
+    // URL-only line — render as a button only (only for no-website outreach)
     const trimmedLine = line.trim();
     if (!isHasWebsite && trimmedLine.match(/^https?:\/\/\S+$/) && previewUrl && trimmedLine.includes(previewUrl.split('/')[2])) {
       const href = trackingOpts?.clickUrl || line;
-      bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px">
+      bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 24px">
         <tr><td>
-          <a href="${href}" style="display:inline-block;padding:12px 24px;background:#111;color:#fff;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:.02em">View Your Demo Website &rarr;</a>
-        </td></tr>
-        <tr><td style="padding:6px 0 0">
-          <a href="${href}" style="font-size:11px;color:#888;text-decoration:none;word-break:break-all">${line}</a>
+          <a href="${href}" style="display:inline-block;padding:14px 28px;background:#111;color:#fff;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:.02em">View Your Demo Website &rarr;</a>
         </td></tr>
       </table>`;
       continue;
@@ -370,13 +368,23 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     }
 
     // "All I need" / the ask — slightly emphasized
-    if (/all i need|5-10 minutes|hop on a quick call/i.test(line)) {
+    if (/all i need|5-10 minutes|5 minutes|hop on a quick call|quick call/i.test(line)) {
       bodyHtml += `<p style="margin:24px 0 18px;font-size:15px;line-height:1.75;color:#111;font-weight:500">${line}</p>`;
       continue;
     }
 
     // Default paragraph
     bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${line}</p>`;
+  }
+
+  // For no-website outreach, always inject a demo site button if one wasn't already rendered
+  if (!isHasWebsite && previewUrl && !bodyHtml.includes('View Your Demo Website')) {
+    const href = trackingOpts?.clickUrl || previewUrl;
+    bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 24px">
+      <tr><td>
+        <a href="${href}" style="display:inline-block;padding:14px 28px;background:#111;color:#fff;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:.02em">View Your Demo Website &rarr;</a>
+      </td></tr>
+    </table>`;
   }
 
   // Tracking pixel HTML
