@@ -299,16 +299,7 @@ async function generateEmailPreview(lead, previewUrl, outreachType) {
 
 async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts, outreachType) {
   const isHasWebsite = outreachType === 'has_website';
-  onProgress({ status: 'generating', message: `Generating samples for ${lead.name}...` });
-
-  let samples;
-  try {
-    samples = await generateFreeSamples(lead);
-    onProgress({ status: 'generating', message: `Samples ready. Writing email...` });
-  } catch(e) {
-    onProgress({ status: 'warn', message: `⚠ Sample generation failed (${e.message}). Email will send without deliverables.` });
-    samples = null;
-  }
+  const samples = null;
 
   const copy = (subjectOverride && bodyOverride)
     ? { subject: subjectOverride, body: bodyOverride }
@@ -323,157 +314,10 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
-  // Determine URLs for links — use click tracking if available
-  const linkUrl = trackingOpts?.clickUrl || previewUrl;
-  const type = (lead.type || 'business').replace(/_/g, ' ');
-  const followUpEx = getFollowUpExamples(type);
-
-  let samplesHtml = '';
-  if (samples) {
-    const sectionTitle = isHasWebsite ? 'What We Can Do For Your Business' : 'Your Free Website + What We Can Do';
-    const sectionSubtitle = isHasWebsite
-      ? 'Here\'s a preview of the kind of work we do for businesses like yours.'
-      : 'The demo website below is yours, completely free. Here\'s a preview of the kind of work we do for businesses like yours.';
-
-    // Item numbering: has_website starts at 1 (no demo site card), no_website starts at 2 (demo site is 1)
-    const n1 = isHasWebsite ? 1 : 2;
-    const n2 = isHasWebsite ? 2 : 3;
-    const n3 = isHasWebsite ? 3 : 4;
-    const n4 = isHasWebsite ? 4 : 5;
-
-    const demoSiteCard = isHasWebsite ? '' : `
-        <tr><td style="padding:20px 0 0" colspan="2">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
-            <tr>
-              <td style="padding:16px 20px 14px">
-                <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">1</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Your Free Demo Website</td>
-                </tr></table>
-              </td>
-            </tr>
-            <tr><td style="padding:0 20px 16px">
-              <a href="${linkUrl}" style="font-size:13px;color:#4f46e5;text-decoration:none;word-break:break-all">${previewUrl}</a>
-              <p style="font-size:11px;color:#888;margin:6px 0 0">This is yours to keep, no strings attached.</p>
-            </td></tr>
-          </table>
-        </td></tr>`;
-
-    const auditContent = isHasWebsite
-      ? `<strong style="color:#111">Website:</strong> You have a site, that's a solid foundation. The question is what's working behind it.<br><br>
-              <strong style="color:#111">Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews. Are you responding to all of them? Each one is a chance to build loyalty.' : 'Building a review presence can dramatically improve trust and local search ranking.'}<br><br>
-              <strong style="color:#111">Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
-              <strong style="color:#111">Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.`
-      : `<strong style="color:#111">Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
-              <strong style="color:#111">Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
-              <strong style="color:#111">Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
-              <strong style="color:#111">Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.`;
-
-    samplesHtml = `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
-        <tr><td style="height:1px;background:#e2e2e2;font-size:0;line-height:0" colspan="2">&nbsp;</td></tr>
-        <tr><td style="padding:28px 0 6px" colspan="2">
-          <p style="font-size:15px;font-weight:700;color:#111;margin:0;letter-spacing:-.02em">${sectionTitle}</p>
-          <p style="font-size:12px;color:#888;margin:4px 0 0">${sectionSubtitle}</p>
-        </td></tr>
-
-        ${demoSiteCard}
-
-        <tr><td style="padding:20px 0 4px" colspan="2">
-          <p style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.1em;margin:0">Sample work we do for businesses like yours</p>
-        </td></tr>
-
-        <tr><td style="padding:8px 0 0" colspan="2">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
-            <tr>
-              <td style="padding:16px 20px 14px">
-                <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n1}</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Instagram Caption</td>
-                </tr></table>
-              </td>
-            </tr>
-            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">${samples.instagram_post || ''}</td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td style="padding:12px 0 0" colspan="2">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
-            <tr>
-              <td style="padding:16px 20px 14px">
-                <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n2}</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Google Review Response</td>
-                </tr></table>
-              </td>
-            </tr>
-            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">${samples.review_response || ''}</td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td style="padding:12px 0 0" colspan="2">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
-            <tr>
-              <td style="padding:16px 20px 14px">
-                <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n3}</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Customer Follow-Up via Text, Email, Facebook & Instagram</td>
-                </tr></table>
-              </td>
-            </tr>
-            <tr><td style="padding:0 20px 4px;font-size:13px;color:#333;line-height:1.7">${samples.followup_message || ''}</td></tr>
-            <tr><td style="padding:4px 20px 16px">
-              <p style="font-size:11px;color:#888;margin:0 0 6px;font-weight:600">How this works for a ${type}:</p>
-              <p style="font-size:11px;color:#666;margin:0;line-height:1.7;font-style:italic">${followUpEx.scenarios}</p>
-            </td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td style="padding:12px 0 0" colspan="2">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f7f8;border:1px solid #e5e5e7;border-radius:8px">
-            <tr>
-              <td style="padding:16px 20px 14px">
-                <table cellpadding="0" cellspacing="0" border="0"><tr>
-                  <td style="background:#111;color:#fff;font-size:10px;font-weight:700;width:22px;height:22px;text-align:center;border-radius:50%;vertical-align:middle;line-height:22px">${n4}</td>
-                  <td style="padding-left:10px;font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em">Online Presence Audit</td>
-                </tr></table>
-              </td>
-            </tr>
-            <tr><td style="padding:0 20px 16px;font-size:13px;color:#333;line-height:1.7">
-              ${auditContent}
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-    `;
-  }
-
   // Replace preview URL in body with click-tracked URL and format email
   let bodyText = copy.body;
   const lines = bodyText.split('\n').filter(l => l.trim());
   let bodyHtml = '';
-  let inList = false;
-  let listItems = [];
-
-  function flushList() {
-    if (!listItems.length) return '';
-    let html = '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px">';
-    listItems.forEach(item => {
-      const match = item.match(/^(\d+)\.\s*(.*)/);
-      const num = match ? match[1] : '';
-      const text = match ? match[2] : item;
-      html += `<tr>
-        <td style="width:28px;vertical-align:top;padding:6px 0">
-          <div style="width:22px;height:22px;background:#111;color:#fff;font-size:10px;font-weight:700;text-align:center;border-radius:50%;line-height:22px">${num}</div>
-        </td>
-        <td style="padding:5px 0 5px 10px;font-size:14px;line-height:1.6;color:#333">${text}</td>
-      </tr>`;
-    });
-    html += '</table>';
-    listItems = [];
-    inList = false;
-    return html;
-  }
 
   for (const l of lines) {
     let line = l;
@@ -481,16 +325,6 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       const escaped = previewUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
     }
-
-    // Numbered list item
-    if (/^\d+\.\s/.test(line)) {
-      inList = true;
-      listItems.push(line);
-      continue;
-    }
-
-    // Flush pending list before next paragraph
-    if (inList) bodyHtml += flushList();
 
     // URL-only line — render as a styled button/link (only for no-website outreach)
     const trimmedLine = line.trim();
@@ -540,9 +374,6 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${line}</p>`;
   }
 
-  // Flush any remaining list
-  if (inList) bodyHtml += flushList();
-
   // Tracking pixel HTML
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
@@ -552,24 +383,12 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     subject: copy.subject,
     text: copy.body,
     html: `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5">
-      <tr><td align="center" style="padding:32px 16px">
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:600px">
-          <!-- HEADER -->
-          <tr><td style="background:#0a0a14;padding:20px 32px;border-radius:10px 10px 0 0">
-            <table cellpadding="0" cellspacing="0" border="0"><tr>
-              <td style="font-size:18px;font-weight:800;color:#ffffff;letter-spacing:.02em;line-height:1;vertical-align:middle">WEB<span style="color:#00e5ff">FORGE</span></td>
-              <td style="padding-left:12px;font-size:11px;font-weight:600;color:#666;letter-spacing:.08em;vertical-align:middle;line-height:1">DIGITAL GROWTH</td>
-            </tr></table>
-          </td></tr>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff">
+      <tr><td align="left" style="padding:24px 32px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:560px">
           <!-- BODY -->
-          <tr><td style="background:#ffffff;padding:40px 32px 36px;border-left:1px solid #e5e5e7;border-right:1px solid #e5e5e7">
+          <tr><td style="background:#ffffff;padding:0">
             ${bodyHtml}
-            ${samplesHtml}
-          </td></tr>
-          <!-- FOOTER -->
-          <tr><td style="background:#fafafa;padding:16px 32px;border:1px solid #e5e5e7;border-top:none;border-radius:0 0 10px 10px">
-            <p style="font-size:11px;color:#aaa;margin:0;line-height:1.5">WebForge &middot; Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
           </td></tr>
         </table>
         ${pixelHtml}
@@ -577,8 +396,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     </table>`
   });
 
-  const deliverableCount = isHasWebsite ? 4 : 5;
-  onProgress({ status: 'sent', message: `Sent to ${emailAddress} with ${deliverableCount} deliverables` });
+  onProgress({ status: 'sent', message: `Sent to ${emailAddress}` });
   return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id, outreachType: outreachType || 'no_website' };
 }
 
