@@ -71,7 +71,7 @@ Build these sections IN ORDER, completing each fully before moving on:
 
 8. CONTACT: Light bg. Show address, phone, and business hours. Big "Call Now" button and "Get Directions" button (href to Google Maps search for the address).
 
-9. FOOTER: Dark bg, white text. Business name, short tagline, © 2025.
+9. FOOTER: Dark bg, white text. Business name, short tagline, © 2026.
 
 10. FLOATING BUTTON: Fixed bottom-right, z-50, rounded-full, primary color, "Book Now" or "Call Now" with phone number.
 
@@ -116,7 +116,7 @@ Output ONLY raw HTML starting with <!DOCTYPE html> and ending with </html>. No m
     throw new Error(err);
   }
 
-  const sitesDir = path.join(__dirname,'..','sites');
+  const sitesDir = path.join(process.env.DATA_DIR || path.join(__dirname,'..'), 'sites');
   fs.mkdirSync(sitesDir, { recursive: true });
   const safe = lead.name.replace(/[^a-z0-9]/gi,'-').toLowerCase().substring(0,40);
   const filename = `${safe}-${Date.now()}.html`;

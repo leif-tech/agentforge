@@ -1,7 +1,9 @@
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
-const leadsEnv = path.join(__dirname, 'leads', '.env');
+// Persistent data directory — set DATA_DIR env var on Railway to your volume mount path (e.g. /data)
+const DATA_ROOT = process.env.DATA_DIR || __dirname;
+const leadsEnv = path.join(DATA_ROOT, 'leads', '.env');
 const localEnv = path.join(__dirname, '.env');
 require('dotenv').config({ path: fs.existsSync(leadsEnv) ? leadsEnv : localEnv });
 const express = require('express');
@@ -115,7 +117,7 @@ app.get('/logout', (req, res) => {
 });
 
 // ── DATA ──────────────────────────────────────────────────────────────────
-const DATA = path.join(__dirname,'leads');
+const DATA = path.join(DATA_ROOT,'leads');
 fs.mkdirSync(DATA,{recursive:true});
 const LF = path.join(DATA,'leads.json');
 const OF = path.join(DATA,'outreach.json');
@@ -203,7 +205,7 @@ app.use(express.static(path.join(__dirname,'public'), {
     }
   }
 }));
-const SITES_DIR = path.join(__dirname,'sites');
+const SITES_DIR = path.join(DATA_ROOT,'sites');
 fs.mkdirSync(SITES_DIR,{recursive:true});
 app.use('/sites', express.static(SITES_DIR));
 
@@ -893,7 +895,7 @@ app.get('/api/settings', (req,res) => res.json({
 
 app.post('/api/settings', (req,res) => {
   const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken, fbEmail, fbPassword } = req.body;
-  const ep = fs.existsSync(path.join(__dirname,'leads')) ? path.join(__dirname,'leads','.env') : path.join(__dirname,'.env');
+  const ep = fs.existsSync(path.join(DATA_ROOT,'leads')) ? path.join(DATA_ROOT,'leads','.env') : path.join(__dirname,'.env');
   let env = fs.existsSync(ep)?fs.readFileSync(ep,'utf8'):'';
   const set = (k,v) => {
     if (!v) return;

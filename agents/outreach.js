@@ -4,7 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 // ── DAILY SEND COUNTER (resets every 24 hours) ──────────────────────────
-const COUNTER_FILE = path.join(__dirname, '..', 'leads', '.send-counter.json');
+const DATA_ROOT = process.env.DATA_DIR || path.join(__dirname, '..');
+const COUNTER_FILE = path.join(DATA_ROOT, 'leads', '.send-counter.json');
 const RESEND_DAILY_LIMIT = 100;
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
