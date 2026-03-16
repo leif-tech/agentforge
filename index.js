@@ -119,6 +119,26 @@ app.get('/logout', (req, res) => {
 // ── DATA ──────────────────────────────────────────────────────────────────
 const DATA = path.join(DATA_ROOT,'leads');
 fs.mkdirSync(DATA,{recursive:true});
+
+// Migrate: if volume was previously mounted at /app/leads, files are now at DATA_ROOT root
+// Move them into the leads/ subdirectory
+['leads.json','outreach.json','replies.json','sequences.json','scheduled.json','tracking.json','.env','.send-counter.json'].forEach(f => {
+  const oldPath = path.join(DATA_ROOT, f);
+  const newPath = path.join(DATA, f);
+  if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+    console.log(`[migrate] Moving ${oldPath} → ${newPath}`);
+    fs.renameSync(oldPath, newPath);
+  } else if (fs.existsSync(oldPath) && fs.existsSync(newPath)) {
+    // Both exist — keep the larger file (more data)
+    const oldSize = fs.statSync(oldPath).size;
+    const newSize = fs.statSync(newPath).size;
+    if (oldSize > newSize) {
+      console.log(`[migrate] Replacing ${newPath} with larger ${oldPath} (${oldSize} > ${newSize})`);
+      fs.renameSync(oldPath, newPath);
+    }
+  }
+});
+
 const LF = path.join(DATA,'leads.json');
 const OF = path.join(DATA,'outreach.json');
 const RF = path.join(DATA,'replies.json');
@@ -929,6 +949,12 @@ app.post('/api/restore', (req,res) => {
   if (sq && Array.isArray(sq)) { sequences = sq; save(SEQ_F, sequences); }
   if (sc && Array.isArray(sc)) { scheduled = sc; save(SCH_F, scheduled); }
   res.json({ ok:true, counts:{ leads:leads.length, outreach:outreach.length, replies:replies.length, tracking:tracking.length } });
+});
+
+// ── VOLUME DIAGNOSTIC ───────────────────────────────────────────────────
+app.get('/api/debug/volume', (req,res) => {
+  const scan = dir => { try { return fs.readdirSync(dir).map(f => { const fp=path.join(dir,f); const s=fs.statSync(fp); return { name:f, size:s.size, isDir:s.isDirectory() }; }); } catch { return []; } };
+  res.json({ DATA_ROOT, DATA, files_at_root: scan(DATA_ROOT), files_at_data: scan(DATA), leads_count: leads.length });
 });
 
 // ── SEND STATS ENDPOINT ──────────────────────────────────────────────────
