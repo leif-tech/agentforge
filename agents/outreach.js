@@ -1,4 +1,52 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
+
+// ── DAILY SEND COUNTER (resets every 24 hours) ──────────────────────────
+const COUNTER_FILE = path.join(__dirname, '..', 'leads', '.send-counter.json');
+const RESEND_DAILY_LIMIT = 100;
+const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function loadCounter() {
+  try {
+    const data = JSON.parse(fs.readFileSync(COUNTER_FILE, 'utf8'));
+    const now = Date.now();
+    if (data.startedAt && (now - data.startedAt) < RESET_INTERVAL_MS) return data;
+    return { startedAt: now, resend: 0, smtp: 0 };
+  } catch {
+    return { startedAt: Date.now(), resend: 0, smtp: 0 };
+  }
+}
+
+function saveCounter(counter) {
+  try { fs.writeFileSync(COUNTER_FILE, JSON.stringify(counter)); } catch {}
+}
+
+function getSendStats() {
+  const counter = loadCounter();
+  const elapsed = Date.now() - counter.startedAt;
+  const remainingMs = Math.max(0, RESET_INTERVAL_MS - elapsed);
+  const resetInHours = Math.floor(remainingMs / 3600000);
+  const resetInMinutes = Math.floor((remainingMs % 3600000) / 60000);
+  return {
+    resend: counter.resend,
+    smtp: counter.smtp,
+    total: counter.resend + counter.smtp,
+    resendLimit: RESEND_DAILY_LIMIT,
+    resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - counter.resend),
+    usingSmtp: counter.resend >= RESEND_DAILY_LIMIT,
+    resetsIn: `${resetInHours}h ${resetInMinutes}m`,
+    resetsAtMs: counter.startedAt + RESET_INTERVAL_MS
+  };
+}
+
+function incrementCounter(method) {
+  const counter = loadCounter();
+  counter[method] = (counter[method] || 0) + 1;
+  saveCounter(counter);
+  return counter;
+}
 
 function getClient() {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -255,6 +303,30 @@ async function sendWithRetry(resend, emailOpts, maxRetries = 2) {
   }
 }
 
+function getSmtpTransport() {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: parseInt(SMTP_PORT) || 587,
+    secure: (parseInt(SMTP_PORT) || 587) === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  });
+}
+
+async function sendViaSmtp(emailOpts) {
+  const transport = getSmtpTransport();
+  if (!transport) throw new Error('SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
+  const result = await transport.sendMail({
+    from: emailOpts.from,
+    to: emailOpts.to,
+    subject: emailOpts.subject,
+    text: emailOpts.text,
+    html: emailOpts.html
+  });
+  return { id: result.messageId, method: 'smtp' };
+}
+
 async function generateFreeSamples(lead) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
@@ -314,14 +386,19 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     ? { subject: subjectOverride, body: bodyOverride }
     : await generateEmailCopy(lead, previewUrl, outreachType);
 
-  const { RESEND_API_KEY, RESEND_FROM } = process.env;
-  if (!RESEND_API_KEY) throw new Error('Resend API key not configured. Go to Settings.');
-  if (!RESEND_FROM) throw new Error('Resend From email not configured. Go to Settings.');
+  const { RESEND_API_KEY, RESEND_FROM, SMTP_HOST, SMTP_USER } = process.env;
+  const counter = loadCounter();
+  const useSmtp = counter.resend >= RESEND_DAILY_LIMIT;
 
-  const { Resend } = require('resend');
-  const resend = new Resend(RESEND_API_KEY);
+  if (!useSmtp) {
+    if (!RESEND_API_KEY) throw new Error('Resend API key not configured. Go to Settings.');
+    if (!RESEND_FROM) throw new Error('Resend From email not configured. Go to Settings.');
+  } else {
+    if (!SMTP_HOST || !SMTP_USER) throw new Error('Resend daily limit reached (100) and SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
+  }
 
-  onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
+  const fromEmail = RESEND_FROM || SMTP_USER;
+  onProgress({ status: 'sending', message: `Sending to ${emailAddress}${useSmtp ? ' (via SMTP)' : ''}...` });
 
   // Replace preview URL in body with click-tracked URL and format email
   let bodyText = copy.body;
@@ -377,8 +454,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   // Tracking pixel HTML
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
-  const data = await sendWithRetry(resend, {
-    from: `Leif | WebForge <${RESEND_FROM}>`,
+  const emailPayload = {
+    from: `Leif | WebForge <${fromEmail}>`,
     to: emailAddress,
     subject: copy.subject,
     text: copy.body,
@@ -394,10 +471,25 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
         ${pixelHtml}
       </td></tr>
     </table>`
-  });
+  };
 
-  onProgress({ status: 'sent', message: `Sent to ${emailAddress}` });
-  return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id, outreachType: outreachType || 'no_website' };
+  let data;
+  let sendMethod;
+  if (useSmtp) {
+    data = await sendViaSmtp(emailPayload);
+    sendMethod = 'smtp';
+  } else {
+    const { Resend } = require('resend');
+    const resend = new Resend(RESEND_API_KEY);
+    data = await sendWithRetry(resend, emailPayload);
+    sendMethod = 'resend';
+  }
+  incrementCounter(sendMethod);
+
+  const stats = getSendStats();
+  const methodLabel = sendMethod === 'smtp' ? 'SMTP' : 'Resend';
+  onProgress({ status: 'sent', message: `Sent to ${emailAddress} via ${methodLabel} (${stats.total} today, ${stats.resendRemaining} Resend left)` });
+  return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id, sendMethod, outreachType: outreachType || 'no_website' };
 }
 
 // ── FOLLOW-UP EMAIL GENERATION ────────────────────────────────────────────
@@ -442,4 +534,4 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`
   return cleanCopy(result);
 }
 
-module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples, generateFollowUpEmail };
+module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples, generateFollowUpEmail, getSendStats };

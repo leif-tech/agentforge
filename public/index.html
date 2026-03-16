@@ -120,6 +120,34 @@ body::after{
 .pulse{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:var(--glow-c);animation:pp 2s infinite;flex-shrink:0}
 @keyframes pp{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
 
+/* SEND COUNTER BADGE */
+.send-badge{
+  display:flex;align-items:center;gap:5px;
+  font-size:9px;font-family:var(--mono);
+  padding:3px 9px;border-radius:4px;
+  border:1px solid var(--b1);
+  background:rgba(11,15,26,.6);
+  color:var(--t3);white-space:nowrap;
+  cursor:default;position:relative;
+}
+.send-badge .sb-count{color:var(--cyan);font-weight:700}
+.send-badge .sb-limit{color:var(--t4)}
+.send-badge .sb-method{
+  font-size:7.5px;text-transform:uppercase;letter-spacing:.06em;
+  padding:1px 5px;border-radius:3px;font-weight:700;
+}
+.send-badge .sb-method.resend{background:rgba(0,229,255,.1);color:var(--cyan)}
+.send-badge .sb-method.smtp{background:rgba(255,179,0,.12);color:var(--amber)}
+.send-badge .sb-bar{
+  position:absolute;bottom:-1px;left:0;height:2px;
+  border-radius:0 0 4px 4px;
+  transition:width .4s ease,background .4s ease;
+}
+.send-badge .sb-reset{font-size:7.5px;color:var(--t4);margin-left:2px}
+.send-badge.warn{border-color:rgba(255,179,0,.3)}
+.send-badge.critical{border-color:rgba(255,77,109,.3);animation:sbPulse 2s infinite}
+@keyframes sbPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,77,109,.2)}}
+
 /* ── LAYOUT ── */
 .app{display:flex;height:calc(100vh - 52px);position:relative;z-index:1;margin-top:0}
 .page{display:none;width:100%;height:100%}
@@ -491,6 +519,12 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div class="chip on"  id="cp-places">Places ✓</div>
     <div class="chip off" id="cp-claude"  onclick="go('settings')">Claude</div>
     <div class="chip off" id="cp-hunter" onclick="go('settings')">Hunter</div>
+    <div class="send-badge" id="send-badge" title="Daily email send counter">
+      <span class="sb-method resend" id="sb-method">RESEND</span>
+      <span class="sb-count" id="sb-count">0</span><span class="sb-limit" id="sb-limit">/100</span>
+      <span class="sb-reset" id="sb-reset"></span>
+      <div class="sb-bar" id="sb-bar"></div>
+    </div>
     <div class="chip off" id="cp-smtp"   onclick="go('settings')">Email</div>
     <div class="chip off" id="cp-cf"     onclick="go('settings')">Cloudflare</div>
     <a href="/logout" class="chip" style="color:var(--t4);border-color:rgba(255,77,109,.3);text-decoration:none;cursor:pointer;margin-left:4px" onmouseover="this.style.color='#ff6b85';this.style.borderColor='#ff6b85'" onmouseout="this.style.color='var(--t4)';this.style.borderColor='rgba(255,77,109,.3)'">Logout</a>
@@ -1011,6 +1045,7 @@ async function boot(){
   await loadLeads();
   await loadTracking();
   await checkCfg();
+  updateSendBadge();
   connect();
   loadCreds();
 }
@@ -1058,6 +1093,46 @@ async function checkCfg(){
 function setChip(id,ok,lbl){const e=document.getElementById(id);e.className=`chip ${ok?'on':'off'}`;e.textContent=ok?`${lbl} ✓`:lbl;}
 function setSS(id,ok){const e=document.getElementById(id);e.className=`ss-badge ${ok?'on':'off'}`;e.textContent=ok?'Connected ✓':'Not Set';}
 function setSavedPlaceholder(id,ok,msg){const e=document.getElementById(id);if(e&&ok){e.placeholder=msg;e.value='';} }
+
+// ── SEND STATS BADGE ─────────────────────────────────────────────────────
+async function updateSendBadge(){
+  try{
+    const s=await(await fetch('/api/send-stats')).json();
+    const badge=document.getElementById('send-badge');
+    const countEl=document.getElementById('sb-count');
+    const limitEl=document.getElementById('sb-limit');
+    const methodEl=document.getElementById('sb-method');
+    const barEl=document.getElementById('sb-bar');
+    const resetEl=document.getElementById('sb-reset');
+    if(!badge)return;
+
+    const pct=Math.min(100,Math.round((s.resend/s.resendLimit)*100));
+    countEl.textContent=s.total;
+    limitEl.textContent='/'+s.resendLimit;
+
+    if(s.usingSmtp){
+      methodEl.textContent='SMTP';
+      methodEl.className='sb-method smtp';
+      badge.title=`Resend limit reached — sending via SMTP. Resets in ${s.resetsIn}`;
+    } else {
+      methodEl.textContent='RESEND';
+      methodEl.className='sb-method resend';
+      badge.title=`${s.resendRemaining} Resend sends remaining. Resets in ${s.resetsIn}`;
+    }
+
+    // Progress bar color
+    let barColor='var(--cyan)';
+    badge.className='send-badge';
+    if(pct>=90){barColor='var(--red)';badge.classList.add('critical');}
+    else if(pct>=70){barColor='var(--amber)';badge.classList.add('warn');}
+    barEl.style.width=pct+'%';
+    barEl.style.background=barColor;
+
+    // Reset timer
+    resetEl.textContent=s.resetsIn;
+  }catch{}
+}
+setInterval(updateSendBadge,30000); // refresh every 30s
 
 // ── NAV ───────────────────────────────────────────────────────────────────
 function go(name){
