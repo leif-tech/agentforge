@@ -11,15 +11,11 @@ function getClient() {
 }
 
 function isComplete(html) {
-  // Accept if we have doctype and either closing tag or it's big enough (Haiku sometimes truncates)
   const hasDoctype = html.includes('<!DOCTYPE') || html.includes('<!doctype');
   const hasClose = html.includes('</html>');
   const isLarge = html.length > 15000;
-  // If no closing tag, try to fix it
-  if (hasDoctype && isLarge && !hasClose) {
-    html = html + '\n</body>\n</html>';
-    return true;
-  }
+  // Large HTML without closing tags is considered complete (auto-fixed by caller)
+  if (hasDoctype && isLarge && !hasClose) return true;
   return hasDoctype && hasClose && html.length > 3000;
 }
 

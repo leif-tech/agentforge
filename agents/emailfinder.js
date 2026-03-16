@@ -13,6 +13,8 @@ let igLoggedIn = false;
 
 async function getBrowser() {
   if (browserInstance && browserInstance.connected) return browserInstance;
+  // Close old disconnected browser if it exists
+  if (browserInstance) { try { await browserInstance.close(); } catch {} }
   browserInstance = await puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
@@ -22,6 +24,10 @@ async function getBrowser() {
   igLoggedIn = false;
   return browserInstance;
 }
+
+// Cleanup on process exit
+process.on('SIGTERM', () => { if (browserInstance) browserInstance.close().catch(()=>{}); });
+process.on('SIGINT', () => { if (browserInstance) browserInstance.close().catch(()=>{}); });
 
 // Email extraction from text/HTML
 function extractEmails(text) {

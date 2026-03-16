@@ -1143,7 +1143,7 @@ function go(name){
   document.querySelectorAll('.tab').forEach(t=>{if(t.textContent.trim()===icons[name])t.classList.add('on');});
   if(name==='builder')drawB();
   if(name==='finder')drawEF();
-  if(name==='outreach'){drawOut();fillSels();}
+  if(name==='outreach'){loadTracking().then(()=>drawOut());fillSels();}
   if(name==='closer')fillSels();
   if(name==='pipeline')drawPipeline();
   if(name==='analytics')loadAnal();
@@ -1156,7 +1156,7 @@ function onSSE(d){
     log('s-feed',d.message,d.status==='lead_found'?'gr':d.status==='error'?'er':d.status==='type_done'?'ok':'');
     if(d.lead){leads.push(d.lead);document.getElementById('s-run').textContent=d.leadsFound;drawScout();updStats();}
   }
-  if(d.type==='scout_done'){bar('s-pb',100);setTimeout(()=>bar('s-pb',0),2500);btn('scout-btn','▶ Run Scout Agent',false);document.getElementById('scan-anim').style.display='none';log('s-feed','✓ Scout complete.','gr');}
+  if(d.type==='scout_done'){bar('s-pb',100);setTimeout(()=>bar('s-pb',0),2500);btn('scout-btn','▶ Run Scout Agent',false);document.getElementById('scan-anim').style.display='none';log('s-feed','✓ Scout complete.','gr');loadLeads().then(()=>{drawB();drawEF();});}
   if(d.type==='emailfinder')log('ef-feed',d.message,d.status==='found'?'gr':d.status==='error'?'er':'');
   if(d.type==='emailfinder_done'){if(d.email&&d.leadId){const l=findLeadLocal(d.leadId);if(l){l.foundEmail=d.email;l.emailConfidence=d.confidence;}drawEF();drawScout();updStats();}}
   if(d.type==='emailfinder_batch_done'){log('ef-feed',`✓ Done — ${d.found}/${d.total} emails found`,'gr');btn('ef-btn','▶ Find Emails',false);bar('ef-pb',0);loadCreds();}
@@ -1577,6 +1577,7 @@ function cpReply(){if(lastReply)navigator.clipboard.writeText(lastReply.body||''
 // ── ANALYTICS ─────────────────────────────────────────────────────────────
 async function loadAnal(){
   try{
+    await loadTracking();
     const d=await(await fetch('/api/analytics')).json();
     document.getElementById('a-tot').textContent=d.total;
     document.getElementById('a-em').textContent=d.withEmail;
@@ -1587,16 +1588,17 @@ async function loadAnal(){
     document.getElementById('a-or').textContent=(d.openRate||0)+'%';
     document.getElementById('a-clr').textContent=(d.clickRate||0)+'%';
     const max=d.total||1;
-    [[0,d.total],[1,d.withEmail],[2,d.withSite],[3,d.contacted],[4,d.replied],[5,d.hotLeads],[6,d.totalOpens||0],[7,d.totalClicks||0]].forEach(([i,v])=>{
+    const contactedMax=d.contacted||1;
+    [[0,d.total,max],[1,d.withEmail,max],[2,d.withSite,max],[3,d.contacted,max],[4,d.replied,contactedMax],[5,d.hotLeads,contactedMax],[6,d.totalOpens||0,contactedMax],[7,d.totalClicks||0,contactedMax]].forEach(([i,v,denom])=>{
       const pf=document.getElementById('pf'+i),pn=document.getElementById('pn'+i);
-      if(pf)pf.style.width=(v/max*100)+'%';
+      if(pf)pf.style.width=(v/denom*100)+'%';
       if(pn)pn.textContent=v;
     });
     const cEl=document.getElementById('a-cities');
     if(cEl&&d.cities){
       cEl.innerHTML=Object.entries(d.cities).map(([city,c])=>`<div class="pr"><div class="pl">${city}</div><div class="pt"><div class="pf" style="width:${(c.total/max)*100}%"></div></div><div class="pn">${c.total}</div></div>`).join('')||'<div style="color:var(--t4);font-size:11px">No data</div>';
     }
-  }catch{}
+  }catch(e){console.error('Analytics load error:',e);}
 }
 
 // ── PIPELINE / KANBAN ─────────────────────────────────────────────────
@@ -1677,7 +1679,11 @@ function sb(s){
 }
 function x(s){return(s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function btn(id,lbl,dis){const b=document.getElementById(id);if(!b)return;if(lbl)b.textContent=lbl;b.disabled=dis;}
-async function post(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+async function post(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json().catch(()=>({error:'Request failed'}));const feed=url.includes('scout')?'s-feed':url.includes('email')||url.includes('finder')?'ef-feed':url.includes('builder')?'b-feed':url.includes('outreach')?'o-feed':url.includes('closer')?'c-feed':null;if(feed)log(feed,'✗ '+( e.error||'Request failed'),'er');const btns={'scout':'scout-btn','emailfinder':'ef-btn','builder':'b-btn','outreach':'o-send-btn','closer':'c-btn'};for(const[k,v]of Object.entries(btns)){if(url.includes(k))btn(v,null,false);}}
+  return r;
+}
 
 if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", boot); } else { boot(); }
 </script>

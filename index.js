@@ -230,13 +230,13 @@ app.post('/api/scout/run', async (req,res) => {
   res.json({ status:'started' });
   try {
     await runScout({ location, businessTypes, businessType, maxLeads:parseInt(maxLeads)||20, filter:filter||'no_website' }, p => {
-      emit(sessionId, { type:'scout', ...p });
       if (p.lead) {
         if (!leads.find(l=>l.name===p.lead.name&&l.address===p.lead.address)) {
           p.lead.id = randomUUID();
           leads.push(p.lead); save(LF,leads);
         }
       }
+      emit(sessionId, { type:'scout', ...p });
     });
     emit(sessionId, { type:'scout_done', total: leads.length });
   } catch(e) { emit(sessionId, { type:'error', agent:'scout', message:e.message }); }
@@ -454,12 +454,15 @@ app.post('/api/outreach/send', async (req,res) => {
 });
 
 // ── BATCH OUTREACH ────────────────────────────────────────────────────────
+let batchOutreachRunning = false;
 app.post('/api/outreach/batch', async (req,res) => {
+  if (batchOutreachRunning) return res.status(409).json({ error:'Batch outreach already in progress' });
   const { ids, sessionId } = req.body;
   const targets = (ids && ids.length ? ids : leads.map(l=>l.id))
     .map(id => findLead(id))
     .filter(f => f && f.lead.foundEmail && !outreach.find(o=>o.leadId===f.lead.id&&o.sentTo===f.lead.foundEmail));
   if (!targets.length) return res.status(400).json({ error:'No eligible leads (need email, not already sent)' });
+  batchOutreachRunning = true;
   res.json({ status:'started', count:targets.length });
   emit(sessionId, { type:'outreach_batch', status:'start', message:`🚀 Batch sending to ${targets.length} leads...` });
   let sent = 0, failed = 0;
@@ -500,6 +503,7 @@ app.post('/api/outreach/batch', async (req,res) => {
     const delay = 3000 + Math.random() * 5000;
     await new Promise(r=>setTimeout(r,delay));
   }
+  batchOutreachRunning = false;
   emit(sessionId, { type:'outreach_batch_done', sent, failed, total:targets.length });
   emit(sessionId, { type:'outreach_batch', status:'complete', message:`🏁 Batch done — ${sent} sent, ${failed} failed` });
 });
@@ -913,6 +917,18 @@ app.post('/api/settings', (req,res) => {
   set('FB_PASSWORD',fbPassword);
   fs.writeFileSync(ep,env.trim());
   res.json({ok:true});
+});
+
+// ── DATA RESTORE (import local data to server) ─────────────────────────
+app.post('/api/restore', (req,res) => {
+  const { leads:ld, outreach:or, replies:rp, tracking:tr, sequences:sq, scheduled:sc } = req.body;
+  if (ld && Array.isArray(ld)) { leads = ld; save(LF, leads); }
+  if (or && Array.isArray(or)) { outreach = or; save(OF, outreach); }
+  if (rp && Array.isArray(rp)) { replies = rp; save(RF, replies); }
+  if (tr && Array.isArray(tr)) { tracking = tr; save(TF, tracking); }
+  if (sq && Array.isArray(sq)) { sequences = sq; save(SEQ_F, sequences); }
+  if (sc && Array.isArray(sc)) { scheduled = sc; save(SCH_F, scheduled); }
+  res.json({ ok:true, counts:{ leads:leads.length, outreach:outreach.length, replies:replies.length, tracking:tracking.length } });
 });
 
 // ── SEND STATS ENDPOINT ──────────────────────────────────────────────────
