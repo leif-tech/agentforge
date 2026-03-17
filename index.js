@@ -213,7 +213,7 @@ app.get('/c/:trackingId', (req, res) => {
 
 // ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  if (req.path === '/login' || req.path === '/logout') return next();
+  if (req.path === '/login' || req.path === '/logout' || req.path === '/profile.jpg') return next();
   if (req.session.auth) return next();
   res.redirect('/login');
 });
