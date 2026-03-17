@@ -206,7 +206,7 @@ Goal: Get a reply by showing them a demo site you already built for them.
 - Paragraph 1: acknowledge their review count and rating in one sentence, make it feel like you actually looked them up, not a template
 - Paragraph 2: one sentence on the problem, people search their name and find nothing
 - Paragraph 3: tell them you built a demo site for them. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text. Say it's just a starting point, a quick demo to show what's possible, and it can be fully customized to match their brand. It's theirs to keep, completely free.
-- Paragraph 4: make it crystal clear that the website and everything is completely free. The only thing you need in return is 5 minutes on a call to customize it for their business. Emphasize "free" — they are getting a real website at no cost. Something like "The site is yours, completely free. All I'd ask is 5 minutes on a call so I can build it around how your business actually runs." Keep it casual and specific. Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring."
+- Paragraph 4: make it clear the website is completely free. Then say you'd like to hop on a quick call — not to sell anything, but to understand what's actually slowing their business down day to day. Once you know their pain points, you'll show them exactly how AI can solve or improve those specific problems. Keep it casual and genuine. Something like "The site is yours, totally free. I'd just love a quick chat to hear what's actually giving you headaches in your business — then I'll show you how AI can take those problems off your plate." Do NOT say "customize" or "tailor". Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring."
 - Paragraph 5: end with one short soft question about the call, not about viewing the site (there's already a button for that). Examples: "Sound fair?", "Worth 5 minutes?", "Interested?". Must be under 8 words. Do NOT say "Want to see it?" or "Worth a quick look?" since the demo button is already there. The goal is just to get a reply about the call.
 - Sign off: MUST end with Leif on its own line, then WebForge on the next line. This is required, never skip it.
 - Max length: 100 words
@@ -249,7 +249,7 @@ Goal: Get a reply by identifying a problem they recognize and offering one concr
 - Paragraph 1: mention you found them while looking at ${type} businesses in their area and say something specific and positive about their reviews or rating. This should read as one natural opening thought.
 - Paragraph 2: state the problem in one clean direct sentence. Something like "Most ${type} customers don't come back simply because they never hear from you after that first visit, that's the biggest reason people drift to competitors." Do not use phrases like "Here's what I'm seeing happen though" or any lead-in that softens the point. Just state it directly.
 - Paragraph 3: pitch the ONE solution, automated follow-up texts or emails after each appointment, seasonal reminders, check-ins. Describe it simply and plainly.
-- Paragraph 4: make it crystal clear that you will set up the automation for them completely free. The only thing you need in return is 5 minutes on a call to customize it for their business. Emphasize the word "free" — they are getting the follow-up system at no cost. Something like "I'll set this up for you, completely free. All I'd need is 5 minutes on a call so I can tailor it to how your business actually runs." Keep it casual and specific. Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring."
+- Paragraph 4: make it clear you'll set up the automation completely free. Then say you'd like to get on a quick call — not to pitch, but to understand what's actually causing friction in their business day to day. Once you know their pain points, you'll show them how AI can solve or improve those specific problems. Keep it casual and genuine. Something like "I'll set this up for you, completely free. All I'd need is a quick chat to hear what's actually giving you headaches running your business — then I'll show you how AI can take those problems off your plate." Do NOT say "customize" or "tailor". Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring."
 - Paragraph 5: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick chat?", "Sound fair?", "Interested?". Must be under 8 words. The goal is just to get a reply.
 - Sign off: MUST end with Leif on its own line, then WebForge on the next line. This is required, never skip it.
 - Max length: 110 words
@@ -425,18 +425,27 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       continue;
     }
 
-    // Sign-off: "Leif" or "WebForge" alone
+    // Sign-off: "Leif" or "WebForge" alone — render signature block with profile photo
     if (/^(Leif|WebForge)$/i.test(line.trim())) {
-      const isName = /^Leif$/i.test(line.trim());
-      bodyHtml += `<p style="margin:${isName ? '28px' : '0'} 0 ${isName ? '2px' : '0'};font-size:${isName ? '15px' : '12px'};font-weight:${isName ? '600' : '500'};color:${isName ? '#111' : '#888'};line-height:1.4;${isName ? '' : 'letter-spacing:.04em'}">${line.trim()}</p>`;
+      if (/^Leif$/i.test(line.trim())) {
+        const profileUrl = (process.env.PUBLIC_URL || 'https://forgeaiagent.com') + '/profile.jpg';
+        bodyHtml += `<table cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0">
+          <tr>
+            <td style="vertical-align:middle;padding-right:14px">
+              <img src="${profileUrl}" width="50" height="50" style="border-radius:50%;display:block;object-fit:cover" alt="Leif" />
+            </td>
+            <td style="vertical-align:middle">
+              <p style="margin:0;font-size:15px;font-weight:600;color:#111;line-height:1.4">Leif</p>
+              <p style="margin:2px 0 0;font-size:12px;font-weight:500;color:#888;line-height:1.4;letter-spacing:.04em">WebForge</p>
+            </td>
+          </tr>
+        </table>`;
+      }
       continue;
     }
 
-    // "All I need" / the ask — slightly emphasized
-    if (/all i need|5-10 minutes|5 minutes|hop on a quick call|quick call/i.test(line)) {
-      bodyHtml += `<p style="margin:24px 0 18px;font-size:15px;line-height:1.75;color:#111;font-weight:500">${line}</p>`;
-      continue;
-    }
+    // Default styling for the ask paragraph (no bold emphasis)
+
 
     // Default paragraph
     bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${line}</p>`;
