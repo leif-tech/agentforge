@@ -308,28 +308,60 @@ async function sendWithRetry(resend, emailOpts, maxRetries = 2) {
   }
 }
 
-function getSmtpTransport() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+let smtpTransport = null;
+let smtpPort = null;
+
+function createSmtpTransport(port) {
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
   return nodemailer.createTransport({
     host: SMTP_HOST,
-    port: parseInt(SMTP_PORT) || 587,
-    secure: (parseInt(SMTP_PORT) || 587) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
+    port,
+    secure: port === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 30000,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
   });
 }
 
+function getSmtpTransport() {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  if (smtpTransport) return smtpTransport;
+  smtpPort = parseInt(SMTP_PORT) || 587;
+  smtpTransport = createSmtpTransport(smtpPort);
+  return smtpTransport;
+}
+
 async function sendViaSmtp(emailOpts) {
-  const transport = getSmtpTransport();
+  let transport = getSmtpTransport();
   if (!transport) throw new Error('SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
-  const result = await transport.sendMail({
-    from: emailOpts.from,
-    to: emailOpts.to,
-    subject: emailOpts.subject,
-    text: emailOpts.text,
-    html: emailOpts.html
-  });
-  return { id: result.messageId, method: 'smtp' };
+  try {
+    const result = await transport.sendMail({
+      from: emailOpts.from, to: emailOpts.to,
+      subject: emailOpts.subject, text: emailOpts.text, html: emailOpts.html
+    });
+    return { id: result.messageId, method: 'smtp' };
+  } catch(e) {
+    // If connection failed, try alternate port (587 ↔ 465)
+    if (e.code === 'ESOCKET' || e.code === 'ETIMEDOUT' || e.code === 'ECONNECTION' || e.message?.includes('timeout')) {
+      const altPort = smtpPort === 587 ? 465 : 587;
+      console.log(`[SMTP] Port ${smtpPort} failed (${e.code || e.message}), trying port ${altPort}...`);
+      if (smtpTransport) { try { smtpTransport.close(); } catch {} }
+      smtpPort = altPort;
+      smtpTransport = createSmtpTransport(altPort);
+      transport = smtpTransport;
+      const result = await transport.sendMail({
+        from: emailOpts.from, to: emailOpts.to,
+        subject: emailOpts.subject, text: emailOpts.text, html: emailOpts.html
+      });
+      return { id: result.messageId, method: 'smtp' };
+    }
+    throw e;
+  }
 }
 
 async function generateFreeSamples(lead) {
