@@ -825,12 +825,22 @@ app.get('/api/analytics', (req,res) => {
         hot=leads.filter(l=>l.status==='Hot Lead 🔥').length,
         replied=replies.length;
   // Tracking stats
-  const totalOpens = tracking.filter(t=>t.opens.length>0).length;
-  const totalClicks = tracking.filter(t=>t.clicks.length>0).length;
-  const outreachTracked = tracking.filter(t=>t.type==='outreach'||t.type==='ab_test').length;
+  const outreachRecs = tracking.filter(t=>t.type==='outreach'||t.type==='ab_test');
+  const followUpRecs = tracking.filter(t=>t.type==='followup');
+  const totalOpens = outreachRecs.filter(t=>t.opens.length>0).length;
+  const totalClicks = outreachRecs.filter(t=>t.clicks.length>0).length;
+  const outreachTracked = outreachRecs.length;
   const openRate = outreachTracked ? Math.round((totalOpens/outreachTracked)*100) : 0;
   const clickRate = outreachTracked ? Math.round((totalClicks/outreachTracked)*100) : 0;
   const replyRate = contacted ? Math.round((replied/contacted)*100) : 0;
+  // Follow-up stats
+  const followUpsSent = followUpRecs.length;
+  const followUpOpens = followUpRecs.filter(t=>t.opens.length>0).length;
+  const followUpClicks = followUpRecs.filter(t=>t.clicks.length>0).length;
+  const followUpOpenRate = followUpsSent ? Math.round((followUpOpens/followUpsSent)*100) : 0;
+  const followUpClickRate = followUpsSent ? Math.round((followUpClicks/followUpsSent)*100) : 0;
+  // Unique leads that received follow-ups
+  const followUpLeads = new Set(followUpRecs.map(t=>t.leadId)).size;
   // Per-city breakdown
   const cities = {};
   leads.forEach(l => {
@@ -869,6 +879,7 @@ app.get('/api/analytics', (req,res) => {
     total, withEmail, withSite, contacted, replied, hotLeads:hot,
     convRate: contacted>0?((hot/contacted)*100).toFixed(1):0,
     openRate, clickRate, replyRate, totalOpens, totalClicks,
+    followUpsSent, followUpLeads, followUpOpens, followUpClicks, followUpOpenRate, followUpClickRate,
     cities, types, dailyLeads, dailyEmails,
     activeSequences: sequences.filter(s=>s.status==='active').length,
     scheduledPending: scheduled.filter(s=>s.status==='pending').length,
