@@ -506,34 +506,58 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 async function generateFollowUpEmail(lead, step, previousSubject) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
+  const hasWebsite = !!lead.website;
+  const scenario = hasWebsite ? 'A' : 'B';
+  const scenarioDesc = hasWebsite
+    ? 'SCENARIO A: Business has a website. The problem is patient/customer retention. The first email pitched automated follow-up texts/emails and an AI chatbot trained on their business.'
+    : 'SCENARIO B: Business has no website. A demo site was already built for them with an AI chatbot included. The first email offered the demo site for free in exchange for a 5-minute call. A "View Your Demo Website" button is automatically added below the email body, so NEVER include any URLs or links in the email text.';
+
+  // Step-specific angle guidance
   const angles = [
-    `Resurface the gap. Remind them what their customers experience when they search for "${lead.name}" and find nothing. Add one new detail or angle they haven't considered. Do NOT reference the previous email directly.`,
-    `Share one specific, useful insight about how customers find ${type}s in their area. A stat, a trend, a behavior pattern. Make the gap feel more real and more urgent. Position it as something you noticed, not a sales pitch.`,
-    `Last email. Be direct and honest. This is it. Frame it as: "I'll leave this with you." Restate the core loss one more time. Make choosing to ignore it feel like a conscious decision to leave money on the table. End with "Should I close this out?" or "Should I take this down?" (referring to the demo site).`
+    'This is follow-up #1. Acknowledge the previous email briefly, then introduce one real industry statistic that makes the core problem feel urgent. Tie it back to their specific situation.',
+    'This is follow-up #2. Share a different angle or insight they haven\'t considered. A trend, a competitor behavior, or a customer pattern. Make the cost of inaction feel more concrete.',
+    'This is follow-up #3 and final. Be direct and honest. Frame it as "I\'ll leave this with you." Make choosing to ignore it feel like a conscious decision. End with "Should I close this out?" or "Should I take this down?"'
   ];
-  const angle = angles[Math.min(step-1, angles.length-1)];
+  const angle = angles[Math.min(step - 1, angles.length - 1)];
 
   const msg = await callAnthropicWithTimeout(client, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 600,
     messages: [{ role: 'user', content:
-`Write follow-up email #${step} from Leif (WebForge) to the owner of "${lead.name}", a ${type}.
-${lead.rating !== 'N/A' ? 'Google rating: ' + lead.rating + '/5 with ' + lead.reviews + ' reviews.' : ''}
-Previous subject line: "${previousSubject}"
+`You are Leif from WebForge, writing a follow-up cold email to a local US business owner who was already contacted but hasn't replied.
 
-Angle: ${angle}
+${scenarioDesc}
 
-Rules:
-- Under 60 words. Shorter than the original email. This is a bump, not a pitch.
-- Start with "You" or "Your", never "I" or a greeting
-- Conversational, confident, human
+INPUT:
+- business_name: ${lead.name}
+- business_type: ${type}
+- review_count: ${lead.reviews || 'unknown'}
+- star_rating: ${lead.rating || 'unknown'}
+- has_website: ${hasWebsite}
+- first_outreach_subject: "${previousSubject}"
+
+STEP: ${angle}
+
+RULES:
+- Write in plain text. No bullet points, no bold, no headers.
+- Maximum 100 words in the body. Short paragraphs, one to two sentences each.
+- Open by acknowledging the previous email briefly. Never say "I hope this finds you well" or anything corporate.
+- Introduce one real, specific statistic that makes the core problem feel urgent and undeniable. The stat must be relevant to their industry and the specific problem being addressed. Do not fabricate stats.
+- Tie the stat back to their actual situation using the business details provided.
+- Do not repeat the full pitch from the first email. Reference it once, move forward.
+- Always mention the AI chatbot (trained on their actual business) and automated follow-up system (texts, emails, or chat) as part of the value. Keep it brief, not a full re-pitch.
+- NEVER include any URLs, links, or domain names in the email body. If the lead has no website, a demo button is added automatically below the email.
+- End with a single low-pressure question. Vary it slightly from "Worth a quick chat?" Examples: "Still worth 5 minutes?", "Want to take a look?", "Worth a call this week?"
+- Sign off: Leif on its own line, then WebForge on the next line.
 - NEVER use em dashes (—) anywhere. Use commas or periods instead.
-- No semicolons. Exclamation marks are OK where they feel natural and add warmth or energy, but never more than 2 in the whole email.
-- No corporate language, no buzzwords
-- BANNED: "just checking in", "following up", "wanted to reach out", "circling back", "touching base", "bumping this"
-- Subject line: 5-8 words, creates curiosity or tension, specific to their business
-- Sign off: Leif on one line, WebForge on the next
-- The CTA must be interest-based. "Reply interested" or "Should I close this out?" Not "book a call."
+- No exclamation points. No filler phrases. No semicolons.
+- No corporate language, no buzzwords.
+- BANNED phrases: "just checking in", "following up", "wanted to reach out", "circling back", "touching base", "bumping this"
+
+SUBJECT LINE RULES:
+- 4 words or fewer
+- Lowercase
+- No clickbait
 
 Return ONLY valid JSON: {"subject":"...","body":"..."}`
     }]
