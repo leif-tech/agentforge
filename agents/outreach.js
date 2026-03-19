@@ -550,7 +550,12 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       throw err;
     }
   } else {
-    const err = new Error('Daily email limits reached (Resend: 100, Brevo: 300). Resets in ' + currentStats.resetsIn);
+    const reasons = [];
+    if (!RESEND_API_KEY) reasons.push('Resend not configured');
+    else if (currentStats.resendRemaining <= 0) reasons.push(`Resend: ${currentStats.resend}/${currentStats.resendLimit} used`);
+    if (!BREVO_API_KEY) reasons.push('Brevo not configured — add BREVO_API_KEY to env vars');
+    else if (currentStats.brevoRemaining <= 0) reasons.push(`Brevo: ${currentStats.brevo}/${currentStats.brevoLimit} used`);
+    const err = new Error(`No email provider available. ${reasons.join('. ')}. Resets in ${currentStats.resetsIn}`);
     err.dailyLimitReached = true;
     throw err;
   }
