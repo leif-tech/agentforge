@@ -308,60 +308,28 @@ async function sendWithRetry(resend, emailOpts, maxRetries = 2) {
   }
 }
 
-let smtpTransport = null;
-let smtpPort = null;
-
-function createSmtpTransport(port) {
-  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 30000,
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 50,
-  });
-}
-
 function getSmtpTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
-  if (smtpTransport) return smtpTransport;
-  smtpPort = parseInt(SMTP_PORT) || 587;
-  smtpTransport = createSmtpTransport(smtpPort);
-  return smtpTransport;
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: parseInt(SMTP_PORT) || 587,
+    secure: (parseInt(SMTP_PORT) || 587) === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 20000,
+  });
 }
 
 async function sendViaSmtp(emailOpts) {
-  let transport = getSmtpTransport();
+  const transport = getSmtpTransport();
   if (!transport) throw new Error('SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
-  try {
-    const result = await transport.sendMail({
-      from: emailOpts.from, to: emailOpts.to,
-      subject: emailOpts.subject, text: emailOpts.text, html: emailOpts.html
-    });
-    return { id: result.messageId, method: 'smtp' };
-  } catch(e) {
-    // If connection failed, try alternate port (587 ↔ 465)
-    if (e.code === 'ESOCKET' || e.code === 'ETIMEDOUT' || e.code === 'ECONNECTION' || e.message?.includes('timeout')) {
-      const altPort = smtpPort === 587 ? 465 : 587;
-      console.log(`[SMTP] Port ${smtpPort} failed (${e.code || e.message}), trying port ${altPort}...`);
-      if (smtpTransport) { try { smtpTransport.close(); } catch {} }
-      smtpPort = altPort;
-      smtpTransport = createSmtpTransport(altPort);
-      transport = smtpTransport;
-      const result = await transport.sendMail({
-        from: emailOpts.from, to: emailOpts.to,
-        subject: emailOpts.subject, text: emailOpts.text, html: emailOpts.html
-      });
-      return { id: result.messageId, method: 'smtp' };
-    }
-    throw e;
-  }
+  const result = await transport.sendMail({
+    from: emailOpts.from, to: emailOpts.to,
+    subject: emailOpts.subject, text: emailOpts.text, html: emailOpts.html
+  });
+  return { id: result.messageId, method: 'smtp' };
 }
 
 async function generateFreeSamples(lead) {
@@ -424,18 +392,10 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     : await generateEmailCopy(lead, previewUrl, outreachType);
 
   const { RESEND_API_KEY, RESEND_FROM, SMTP_HOST, SMTP_USER } = process.env;
-  const counter = loadCounter();
-  const useSmtp = counter.resend >= RESEND_DAILY_LIMIT;
-
-  if (!useSmtp) {
-    if (!RESEND_API_KEY) throw new Error('Resend API key not configured. Go to Settings.');
-    if (!RESEND_FROM) throw new Error('Resend From email not configured. Go to Settings.');
-  } else {
-    if (!SMTP_HOST || !SMTP_USER) throw new Error('Resend daily limit reached (100) and SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
-  }
+  if (!RESEND_API_KEY && !SMTP_HOST) throw new Error('No email provider configured. Set Resend or SMTP in Settings.');
 
   const fromEmail = RESEND_FROM || SMTP_USER;
-  onProgress({ status: 'sending', message: `Sending to ${emailAddress}${useSmtp ? ' (via SMTP)' : ''}...` });
+  onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
   // Replace preview URL in body with click-tracked URL and format email
   let bodyText = copy.body;
@@ -521,14 +481,37 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   let data;
   let sendMethod;
-  if (useSmtp) {
+
+  // Try Resend first (primary)
+  if (RESEND_API_KEY && RESEND_FROM) {
+    try {
+      const { Resend } = require('resend');
+      const resend = new Resend(RESEND_API_KEY);
+      data = await sendWithRetry(resend, emailPayload);
+      sendMethod = 'resend';
+    } catch(resendErr) {
+      // If Resend fails (rate limit, daily cap, etc.), try SMTP fallback
+      console.log(`[Email] Resend failed: ${resendErr.message}, trying SMTP...`);
+      if (SMTP_HOST && SMTP_USER) {
+        try {
+          data = await sendViaSmtp(emailPayload);
+          sendMethod = 'smtp';
+        } catch(smtpErr) {
+          const err = new Error(`Resend: ${resendErr.message}. SMTP: ${smtpErr.message}`);
+          err.dailyLimitReached = true;
+          throw err;
+        }
+      } else {
+        const err = new Error(`Resend daily limit reached (${resendErr.message}). No SMTP fallback configured.`);
+        err.dailyLimitReached = true;
+        throw err;
+      }
+    }
+  } else if (SMTP_HOST && SMTP_USER) {
     data = await sendViaSmtp(emailPayload);
     sendMethod = 'smtp';
   } else {
-    const { Resend } = require('resend');
-    const resend = new Resend(RESEND_API_KEY);
-    data = await sendWithRetry(resend, emailPayload);
-    sendMethod = 'resend';
+    throw new Error('No email provider configured.');
   }
   incrementCounter(sendMethod);
 

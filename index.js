@@ -542,6 +542,12 @@ app.post('/api/outreach/batch', async (req,res) => {
     } catch(e) {
       failed++;
       emit(sessionId, { type:'outreach_batch', status:'error', message:`❌ ${lead.name}: ${e.message}` });
+      if (e.dailyLimitReached) {
+        const remaining = targets.length - i - 1;
+        emit(sessionId, { type:'outreach_batch', status:'error', message:`⛔ Daily email limit reached. Stopping batch. ${remaining} leads skipped.` });
+        sendingInProgress.delete(lockKey);
+        break;
+      }
     } finally {
       sendingInProgress.delete(lockKey);
     }
@@ -594,6 +600,11 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
     } catch(e) {
       failed++;
       emit(sessionId, { type:'followup_batch', status:'error', message:`❌ ${lead.name}: ${e.message}` });
+      if (e.dailyLimitReached) {
+        const remaining = targets.length - i - 1;
+        emit(sessionId, { type:'followup_batch', status:'error', message:`⛔ Daily email limit reached. Stopping batch. ${remaining} leads skipped.` });
+        break;
+      }
     }
     const delay = 3000 + Math.random() * 5000;
     await new Promise(r=>setTimeout(r,delay));
