@@ -184,6 +184,19 @@ replies.forEach(r => {
 });
 if (rMig) save(RF, replies);
 
+// Reconcile: sync outreach records back to leads if outreachEmail/outreachSentAt is missing
+let reconMig = false;
+outreach.forEach(o => {
+  if (!o.leadId || !o.sentTo || !o.sentAt) return;
+  if (o.type === 'followup') return; // follow-ups don't set initial outreach fields
+  const f = leads.find(l => l.id === o.leadId);
+  if (!f) return;
+  if (!f.outreachEmail) { f.outreachEmail = o.sentTo; reconMig = true; }
+  if (!f.outreachSentAt) { f.outreachSentAt = o.sentAt; reconMig = true; }
+  if (!f.status || f.status === 'New') { f.status = 'Outreach Sent'; reconMig = true; }
+});
+if (reconMig) { save(LF, leads); console.log('[migrate] Reconciled outreach data → leads.json'); }
+
 // ── HELPERS ──────────────────────────────────────────────────────────────
 function findLead(id) {
   const index = leads.findIndex(l => l.id === id);
