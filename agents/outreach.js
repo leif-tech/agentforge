@@ -585,11 +585,7 @@ async function generateFollowUpEmail(lead, step, previousSubject) {
   ];
   const angle = angles[Math.min(step - 1, angles.length - 1)];
 
-  const msg = await callAnthropicWithTimeout(client, {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 600,
-    messages: [{ role: 'user', content:
-`You are Leif from WebForge, writing a follow-up cold email to a local US business owner who was already contacted but hasn't replied.
+  const prompt = `You are Leif from WebForge, writing a follow-up cold email to a local US business owner who was already contacted but hasn't replied.
 
 ${scenarioDesc}
 
@@ -624,13 +620,25 @@ SUBJECT LINE RULES:
 - Lowercase
 - No clickbait
 
-Return ONLY valid JSON: {"subject":"...","body":"..."}`
-    }]
-  });
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 
-  const result = parseJSON(msg.content[0].text);
-  if (!result?.subject || !result?.body) throw new Error('Failed to generate follow-up.');
-  return cleanCopy(result);
+  // Retry up to 3 times if Claude returns bad JSON
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const msg = await callAnthropicWithTimeout(client, {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      const result = parseJSON(msg.content[0]?.text || '');
+      if (result?.subject && result?.body) return cleanCopy(result);
+      console.log(`[FollowUp] Attempt ${attempt}/3 bad JSON for ${lead.name}: ${(msg.content[0]?.text || '').substring(0, 100)}`);
+    } catch(e) {
+      console.log(`[FollowUp] Attempt ${attempt}/3 error for ${lead.name}: ${e.message}`);
+      if (attempt === 3) throw e;
+    }
+  }
+  throw new Error('Failed to generate follow-up after 3 attempts.');
 }
 
 module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples, generateFollowUpEmail, getSendStats };
