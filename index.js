@@ -957,6 +957,7 @@ app.get('/api/settings', (req,res) => res.json({
   hasAnthropicKey: !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'),
   hasGoogleKey: !!process.env.GOOGLE_PLACES_API_KEY,
   hasSmtp: !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM),
+  hasBrevo: !!process.env.BREVO_API_KEY,
   hasSmtpFallback: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
   sendStats: getSendStats(),
   hasHunter: !!process.env.HUNTER_API_KEY,
@@ -1032,8 +1033,9 @@ app.listen(PORT, () => {
   console.log(`  Google Places : ${process.env.GOOGLE_PLACES_API_KEY?'✓ Ready':'✗ Missing'}`);
   console.log(`  Anthropic     : ${process.env.ANTHROPIC_API_KEY&&process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'?'✓ Ready':'✗ Add in Settings'}`);
   console.log(`  Hunter.io     : ${process.env.HUNTER_API_KEY?'✓ Ready':'✗ Add in Settings'}`);
-  console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+')':'✗ Add in Settings — outreach emails will NOT send'}`);
-  console.log(`  SMTP Fallback : ${process.env.SMTP_HOST&&process.env.SMTP_USER?'✓ Ready ('+process.env.SMTP_USER+') — kicks in after 100 Resend/day':'✗ Not configured'}`);
+  console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+') — 100/day':'✗ Add in Settings'}`);
+  console.log(`  Brevo Fallback: ${process.env.BREVO_API_KEY?'✓ Ready — 300/day, kicks in after Resend limit':'✗ Not configured'}`);
+  console.log(`  SMTP Fallback : ${process.env.SMTP_HOST&&process.env.SMTP_USER?'✓ Ready ('+process.env.SMTP_USER+') — last resort':'✗ Not configured'}`);
   console.log(`  Cloudflare    : ${process.env.CLOUDFLARE_ACCOUNT_ID&&process.env.CLOUDFLARE_API_TOKEN?'✓ Ready — sites deploy to pages.dev':'✗ Add in Settings (required for permanent URLs)'}\n`);
   if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
     console.log(`  ⚠️  WARNING: Resend not configured — outreach emails will fail!`);

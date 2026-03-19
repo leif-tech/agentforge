@@ -1,5 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 
@@ -30,13 +31,16 @@ function getSendStats() {
   const remainingMs = Math.max(0, RESET_INTERVAL_MS - elapsed);
   const resetInHours = Math.floor(remainingMs / 3600000);
   const resetInMinutes = Math.floor((remainingMs % 3600000) / 60000);
+  const BREVO_DAILY_LIMIT = 300;
   return {
     resend: counter.resend,
+    brevo: counter.brevo || 0,
     smtp: counter.smtp,
-    total: counter.resend + counter.smtp,
+    total: (counter.resend || 0) + (counter.brevo || 0) + (counter.smtp || 0),
     resendLimit: RESEND_DAILY_LIMIT,
-    resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - counter.resend),
-    usingSmtp: counter.resend >= RESEND_DAILY_LIMIT,
+    brevoLimit: BREVO_DAILY_LIMIT,
+    resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - (counter.resend || 0)),
+    brevoRemaining: Math.max(0, BREVO_DAILY_LIMIT - (counter.brevo || 0)),
     resetsIn: `${resetInHours}h ${resetInMinutes}m`,
     resetsAtMs: counter.startedAt + RESET_INTERVAL_MS
   };
@@ -332,6 +336,26 @@ async function sendViaSmtp(emailOpts) {
   return { id: result.messageId, method: 'smtp' };
 }
 
+async function sendViaBrevo(emailOpts) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error('Brevo API key not configured.');
+  // Parse "Name <email>" format from the from field
+  const fromMatch = emailOpts.from.match(/^(.+?)\s*<(.+?)>$/);
+  const senderName = fromMatch ? fromMatch[1].trim() : 'Leif | WebForge';
+  const senderEmail = fromMatch ? fromMatch[2].trim() : emailOpts.from;
+  const res = await axios.post('https://api.brevo.com/v3/smtp/email', {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: emailOpts.to }],
+    subject: emailOpts.subject,
+    textContent: emailOpts.text,
+    htmlContent: emailOpts.html,
+  }, {
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
+    timeout: 15000,
+  });
+  return { id: res.data?.messageId || res.data?.messageIds?.[0], method: 'brevo' };
+}
+
 async function generateFreeSamples(lead) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
@@ -391,10 +415,10 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     ? { subject: subjectOverride, body: bodyOverride }
     : await generateEmailCopy(lead, previewUrl, outreachType);
 
-  const { RESEND_API_KEY, RESEND_FROM, SMTP_HOST, SMTP_USER } = process.env;
-  if (!RESEND_API_KEY && !SMTP_HOST) throw new Error('No email provider configured. Set Resend or SMTP in Settings.');
+  const { RESEND_API_KEY, RESEND_FROM, BREVO_API_KEY, SMTP_HOST, SMTP_USER } = process.env;
+  if (!RESEND_API_KEY && !BREVO_API_KEY && !SMTP_HOST) throw new Error('No email provider configured. Set Resend, Brevo, or SMTP in Settings.');
 
-  const fromEmail = RESEND_FROM || SMTP_USER;
+  const fromEmail = RESEND_FROM || SMTP_USER || 'leif@forgeaiagent.com';
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
   // Replace preview URL in body with click-tracked URL and format email
@@ -482,7 +506,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   let data;
   let sendMethod;
 
-  // Try Resend first (primary)
+  // Try Resend first → Brevo fallback → SMTP last resort
   if (RESEND_API_KEY && RESEND_FROM) {
     try {
       const { Resend } = require('resend');
@@ -490,23 +514,48 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       data = await sendWithRetry(resend, emailPayload);
       sendMethod = 'resend';
     } catch(resendErr) {
-      // If Resend fails (rate limit, daily cap, etc.), try SMTP fallback
-      console.log(`[Email] Resend failed: ${resendErr.message}, trying SMTP...`);
-      if (SMTP_HOST && SMTP_USER) {
+      console.log(`[Email] Resend failed: ${resendErr.message}, trying Brevo...`);
+      // Fallback to Brevo
+      if (BREVO_API_KEY) {
+        try {
+          data = await sendViaBrevo(emailPayload);
+          sendMethod = 'brevo';
+        } catch(brevoErr) {
+          console.log(`[Email] Brevo failed: ${brevoErr.response?.data?.message || brevoErr.message}`);
+          // Last resort: SMTP
+          if (SMTP_HOST && SMTP_USER) {
+            try {
+              data = await sendViaSmtp(emailPayload);
+              sendMethod = 'smtp';
+            } catch(smtpErr) {
+              const err = new Error(`All providers failed. Resend: ${resendErr.message}. Brevo: ${brevoErr.response?.data?.message || brevoErr.message}`);
+              err.dailyLimitReached = true;
+              throw err;
+            }
+          } else {
+            const err = new Error(`Resend and Brevo daily limits reached. ${brevoErr.response?.data?.message || brevoErr.message}`);
+            err.dailyLimitReached = true;
+            throw err;
+          }
+        }
+      } else if (SMTP_HOST && SMTP_USER) {
         try {
           data = await sendViaSmtp(emailPayload);
           sendMethod = 'smtp';
         } catch(smtpErr) {
-          const err = new Error(`Resend: ${resendErr.message}. SMTP: ${smtpErr.message}`);
+          const err = new Error(`Resend failed, SMTP failed: ${smtpErr.message}`);
           err.dailyLimitReached = true;
           throw err;
         }
       } else {
-        const err = new Error(`Resend daily limit reached (${resendErr.message}). No SMTP fallback configured.`);
+        const err = new Error(`Resend daily limit reached (${resendErr.message}). No fallback configured.`);
         err.dailyLimitReached = true;
         throw err;
       }
     }
+  } else if (BREVO_API_KEY) {
+    data = await sendViaBrevo(emailPayload);
+    sendMethod = 'brevo';
   } else if (SMTP_HOST && SMTP_USER) {
     data = await sendViaSmtp(emailPayload);
     sendMethod = 'smtp';
@@ -516,8 +565,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   incrementCounter(sendMethod);
 
   const stats = getSendStats();
-  const methodLabel = sendMethod === 'smtp' ? 'SMTP' : 'Resend';
-  onProgress({ status: 'sent', message: `Sent to ${emailAddress} via ${methodLabel} (${stats.total} today, ${stats.resendRemaining} Resend left)` });
+  const methodLabel = sendMethod === 'brevo' ? 'Brevo' : sendMethod === 'smtp' ? 'SMTP' : 'Resend';
+  onProgress({ status: 'sent', message: `Sent to ${emailAddress} via ${methodLabel} (${stats.total} today | Resend: ${stats.resendRemaining} left, Brevo: ${stats.brevoRemaining} left)` });
   return { subject: copy.subject, body: copy.body, samples, sentTo: emailAddress, sentAt: new Date().toISOString(), resendId: data?.id, sendMethod, outreachType: outreachType || 'no_website' };
 }
 
