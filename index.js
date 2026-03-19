@@ -1035,6 +1035,7 @@ app.listen(PORT, () => {
   console.log(`  Hunter.io     : ${process.env.HUNTER_API_KEY?'✓ Ready':'✗ Add in Settings'}`);
   console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+') — 100/day':'✗ Add in Settings'}`);
   console.log(`  Brevo Fallback: ${process.env.BREVO_API_KEY?'✓ Ready — 300/day, kicks in after Resend limit':'✗ Not configured'}`);
+  console.log(`  [debug] BREVO_API_KEY type=${typeof process.env.BREVO_API_KEY} len=${(process.env.BREVO_API_KEY||'').length} starts=${(process.env.BREVO_API_KEY||'').substring(0,8)}`);
   console.log(`  SMTP Fallback : ${process.env.SMTP_HOST&&process.env.SMTP_USER?'✓ Ready ('+process.env.SMTP_USER+') — last resort':'✗ Not configured'}`);
   console.log(`  Cloudflare    : ${process.env.CLOUDFLARE_ACCOUNT_ID&&process.env.CLOUDFLARE_API_TOKEN?'✓ Ready — sites deploy to pages.dev':'✗ Add in Settings (required for permanent URLs)'}\n`);
   if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
