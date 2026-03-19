@@ -137,6 +137,7 @@ body::after{
   padding:1px 5px;border-radius:3px;font-weight:700;
 }
 .send-badge .sb-method.resend{background:rgba(0,229,255,.1);color:var(--cyan)}
+.send-badge .sb-method.brevo{background:rgba(0,255,136,.1);color:var(--green)}
 .send-badge .sb-method.smtp{background:rgba(255,179,0,.12);color:var(--amber)}
 .send-badge .sb-bar{
   position:absolute;bottom:-1px;left:0;height:2px;
@@ -519,11 +520,17 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div class="chip on"  id="cp-places">Places ✓</div>
     <div class="chip off" id="cp-claude"  onclick="go('settings')">Claude</div>
     <div class="chip off" id="cp-hunter" onclick="go('settings')">Hunter</div>
-    <div class="send-badge" id="send-badge" title="Daily email send counter">
+    <div class="send-badge" id="send-badge" title="Daily Resend counter">
       <span class="sb-method resend" id="sb-method">RESEND</span>
       <span class="sb-count" id="sb-count">0</span><span class="sb-limit" id="sb-limit">/100</span>
       <span class="sb-reset" id="sb-reset"></span>
       <div class="sb-bar" id="sb-bar"></div>
+    </div>
+    <div class="send-badge" id="brevo-badge" title="Daily Brevo counter" style="display:none">
+      <span class="sb-method brevo" id="bb-method">BREVO</span>
+      <span class="sb-count" id="bb-count">0</span><span class="sb-limit" id="bb-limit">/300</span>
+      <span class="sb-reset" id="bb-reset"></span>
+      <div class="sb-bar" id="bb-bar"></div>
     </div>
     <div class="chip off" id="cp-smtp"   onclick="go('settings')">Email</div>
     <div class="chip off" id="cp-cf"     onclick="go('settings')">Cloudflare</div>
@@ -1116,38 +1123,43 @@ function setSavedPlaceholder(id,ok,msg){const e=document.getElementById(id);if(e
 async function updateSendBadge(){
   try{
     const s=await(await fetch('/api/send-stats')).json();
+
+    // ── Resend badge ──
     const badge=document.getElementById('send-badge');
-    const countEl=document.getElementById('sb-count');
-    const limitEl=document.getElementById('sb-limit');
-    const methodEl=document.getElementById('sb-method');
-    const barEl=document.getElementById('sb-bar');
-    const resetEl=document.getElementById('sb-reset');
-    if(!badge)return;
-
-    const pct=Math.min(100,Math.round((s.resend/s.resendLimit)*100));
-    countEl.textContent=s.total;
-    limitEl.textContent='/'+s.resendLimit;
-
-    if(s.usingSmtp){
-      methodEl.textContent='SMTP';
-      methodEl.className='sb-method smtp';
-      badge.title=`Resend limit reached — sending via SMTP. Resets in ${s.resetsIn}`;
-    } else {
-      methodEl.textContent='RESEND';
-      methodEl.className='sb-method resend';
+    if(badge){
+      const pct=Math.min(100,Math.round((s.resend/s.resendLimit)*100));
+      document.getElementById('sb-count').textContent=s.resend;
+      document.getElementById('sb-limit').textContent='/'+s.resendLimit;
+      document.getElementById('sb-reset').textContent=s.resetsIn;
       badge.title=`${s.resendRemaining} Resend sends remaining. Resets in ${s.resetsIn}`;
+      let barColor='var(--cyan)';
+      badge.className='send-badge';
+      if(pct>=100){barColor='var(--red)';badge.classList.add('critical');}
+      else if(pct>=90){barColor='var(--red)';badge.classList.add('critical');}
+      else if(pct>=70){barColor='var(--amber)';badge.classList.add('warn');}
+      document.getElementById('sb-bar').style.width=pct+'%';
+      document.getElementById('sb-bar').style.background=barColor;
     }
 
-    // Progress bar color
-    let barColor='var(--cyan)';
-    badge.className='send-badge';
-    if(pct>=90){barColor='var(--red)';badge.classList.add('critical');}
-    else if(pct>=70){barColor='var(--amber)';badge.classList.add('warn');}
-    barEl.style.width=pct+'%';
-    barEl.style.background=barColor;
-
-    // Reset timer
-    resetEl.textContent=s.resetsIn;
+    // ── Brevo badge (shows when Brevo has been used or Resend is maxed) ──
+    const bbadge=document.getElementById('brevo-badge');
+    if(bbadge){
+      const showBrevo=s.brevo>0||s.usingBrevo;
+      bbadge.style.display=showBrevo?'':'none';
+      if(showBrevo){
+        const bpct=Math.min(100,Math.round((s.brevo/s.brevoLimit)*100));
+        document.getElementById('bb-count').textContent=s.brevo;
+        document.getElementById('bb-limit').textContent='/'+s.brevoLimit;
+        document.getElementById('bb-reset').textContent=s.resetsIn;
+        bbadge.title=`${s.brevoRemaining} Brevo sends remaining. Resets in ${s.resetsIn}`;
+        let bColor='var(--green)';
+        bbadge.className='send-badge';
+        if(bpct>=90){bColor='var(--red)';bbadge.classList.add('critical');}
+        else if(bpct>=70){bColor='var(--amber)';bbadge.classList.add('warn');}
+        document.getElementById('bb-bar').style.width=bpct+'%';
+        document.getElementById('bb-bar').style.background=bColor;
+      }
+    }
   }catch{}
 }
 setInterval(updateSendBadge,30000); // refresh every 30s
@@ -1505,7 +1517,7 @@ async function sendOut(force){
   const id=document.getElementById('o-lead').value,em=document.getElementById('o-email').value.trim();
   if(!id){alert('Select a lead');return;}
   if(!em){alert('Enter an email address');return;}
-  try{const cfg=await(await fetch('/api/settings')).json();if(!cfg.hasSmtp){alert('⚠ Resend not configured! Go to Settings.');go('settings');return;}}catch{}
+  try{const cfg=await(await fetch('/api/settings')).json();if(!cfg.hasSmtp&&!cfg.hasBrevo){alert('⚠ No email provider configured! Go to Settings.');go('settings');return;}}catch{}
   const subject=document.getElementById('o-subj')?.value?.trim();
   const body=document.getElementById('o-email-body')?.value?.trim();
   const btnId=force?'o-force-btn':'o-send-btn';

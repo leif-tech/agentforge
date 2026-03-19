@@ -32,15 +32,18 @@ function getSendStats() {
   const resetInHours = Math.floor(remainingMs / 3600000);
   const resetInMinutes = Math.floor((remainingMs % 3600000) / 60000);
   const BREVO_DAILY_LIMIT = 300;
+  const resendCount = counter.resend || 0;
+  const brevoCount = counter.brevo || 0;
   return {
-    resend: counter.resend,
-    brevo: counter.brevo || 0,
-    smtp: counter.smtp,
-    total: (counter.resend || 0) + (counter.brevo || 0) + (counter.smtp || 0),
+    resend: resendCount,
+    brevo: brevoCount,
+    smtp: counter.smtp || 0,
+    total: resendCount + brevoCount + (counter.smtp || 0),
     resendLimit: RESEND_DAILY_LIMIT,
     brevoLimit: BREVO_DAILY_LIMIT,
-    resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - (counter.resend || 0)),
-    brevoRemaining: Math.max(0, BREVO_DAILY_LIMIT - (counter.brevo || 0)),
+    resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - resendCount),
+    brevoRemaining: Math.max(0, BREVO_DAILY_LIMIT - brevoCount),
+    usingBrevo: resendCount >= RESEND_DAILY_LIMIT,
     resetsIn: `${resetInHours}h ${resetInMinutes}m`,
     resetsAtMs: counter.startedAt + RESET_INTERVAL_MS
   };
@@ -506,8 +509,13 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   let data;
   let sendMethod;
 
-  // Try Resend first → Brevo fallback → SMTP last resort
-  if (RESEND_API_KEY && RESEND_FROM) {
+  // Check counters first to decide which provider to use
+  const currentStats = getSendStats();
+  const resendAvailable = RESEND_API_KEY && RESEND_FROM && currentStats.resendRemaining > 0;
+  const brevoAvailable = BREVO_API_KEY && currentStats.brevoRemaining > 0;
+
+  // Resend (100/day) → Brevo (300/day) → SMTP last resort
+  if (resendAvailable) {
     try {
       const { Resend } = require('resend');
       const resend = new Resend(RESEND_API_KEY);
@@ -515,52 +523,36 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
       sendMethod = 'resend';
     } catch(resendErr) {
       console.log(`[Email] Resend failed: ${resendErr.message}, trying Brevo...`);
-      // Fallback to Brevo
-      if (BREVO_API_KEY) {
+      if (brevoAvailable) {
         try {
           data = await sendViaBrevo(emailPayload);
           sendMethod = 'brevo';
         } catch(brevoErr) {
           console.log(`[Email] Brevo failed: ${brevoErr.response?.data?.message || brevoErr.message}`);
-          // Last resort: SMTP
-          if (SMTP_HOST && SMTP_USER) {
-            try {
-              data = await sendViaSmtp(emailPayload);
-              sendMethod = 'smtp';
-            } catch(smtpErr) {
-              const err = new Error(`All providers failed. Resend: ${resendErr.message}. Brevo: ${brevoErr.response?.data?.message || brevoErr.message}`);
-              err.dailyLimitReached = true;
-              throw err;
-            }
-          } else {
-            const err = new Error(`Resend and Brevo daily limits reached. ${brevoErr.response?.data?.message || brevoErr.message}`);
-            err.dailyLimitReached = true;
-            throw err;
-          }
-        }
-      } else if (SMTP_HOST && SMTP_USER) {
-        try {
-          data = await sendViaSmtp(emailPayload);
-          sendMethod = 'smtp';
-        } catch(smtpErr) {
-          const err = new Error(`Resend failed, SMTP failed: ${smtpErr.message}`);
+          const err = new Error(`Resend: ${resendErr.message}. Brevo: ${brevoErr.response?.data?.message || brevoErr.message}`);
           err.dailyLimitReached = true;
           throw err;
         }
       } else {
-        const err = new Error(`Resend daily limit reached (${resendErr.message}). No fallback configured.`);
+        const err = new Error(`Resend failed: ${resendErr.message}. No Brevo remaining.`);
         err.dailyLimitReached = true;
         throw err;
       }
     }
-  } else if (BREVO_API_KEY) {
-    data = await sendViaBrevo(emailPayload);
-    sendMethod = 'brevo';
-  } else if (SMTP_HOST && SMTP_USER) {
-    data = await sendViaSmtp(emailPayload);
-    sendMethod = 'smtp';
+  } else if (brevoAvailable) {
+    try {
+      data = await sendViaBrevo(emailPayload);
+      sendMethod = 'brevo';
+    } catch(brevoErr) {
+      console.log(`[Email] Brevo failed: ${brevoErr.response?.data?.message || brevoErr.message}`);
+      const err = new Error(`Brevo failed: ${brevoErr.response?.data?.message || brevoErr.message}`);
+      err.dailyLimitReached = true;
+      throw err;
+    }
   } else {
-    throw new Error('No email provider configured.');
+    const err = new Error('Daily email limits reached (Resend: 100, Brevo: 300). Resets in ' + currentStats.resetsIn);
+    err.dailyLimitReached = true;
+    throw err;
   }
   incrementCounter(sendMethod);
 
