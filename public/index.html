@@ -1524,7 +1524,7 @@ function getLeadTracking(id){
   return {opens:recs.reduce((s,r)=>s+r.opens.length,0),clicks:recs.reduce((s,r)=>s+r.clicks.length,0),followUps};
 }
 function drawOut(){
-  const allSent=leads.filter(l=>l.outreachEmail);
+  const allSent=leads.filter(l=>l.outreachEmail).sort((a,b)=>new Date(a.outreachSentAt||0)-new Date(b.outreachSentAt||0));
   const oq=(document.getElementById('o-search')?.value||'').trim().toLowerCase();
   const df=document.getElementById('o-date-filter')?.value||'';
   // Populate date dropdown with unique sent dates
