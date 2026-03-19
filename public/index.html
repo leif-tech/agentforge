@@ -778,12 +778,16 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="cnt" id="o-badge">0 sent</div>
       <div class="acts"><button class="ab v" onclick="go('closer')">→ Closer</button></div>
     </div>
-    <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px">
-      <div style="position:relative;flex:1;display:flex;align-items:center">
+    <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="position:relative;flex:1;min-width:140px;display:flex;align-items:center">
         <svg style="position:absolute;left:10px;pointer-events:none;opacity:.35" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="o-search" placeholder="Search outreach log..." oninput="drawOut()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
       </div>
-      <button class="ab" onclick="document.getElementById('o-search').value='';drawOut()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
+      <select id="o-date-filter" onchange="drawOut()" style="padding:7px 10px;font-size:11px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;cursor:pointer">
+        <option value="">All dates</option>
+      </select>
+      <button class="ab" onclick="oSelectVisible()" style="font-size:10px;white-space:nowrap;color:var(--cyan)">Select visible</button>
+      <button class="ab" onclick="document.getElementById('o-search').value='';document.getElementById('o-date-filter').value='';oSel.clear();drawOut();oSelUpd()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
     </div>
     <div class="tw">
       <div class="empty" id="o-e"><div class="ei">📨</div><div class="et">No Outreach Sent Yet</div><div class="es">Build demo sites, then send outreach</div></div>
@@ -1508,7 +1512,17 @@ function getLeadTracking(id){
 function drawOut(){
   const allSent=leads.filter(l=>l.outreachEmail);
   const oq=(document.getElementById('o-search')?.value||'').trim().toLowerCase();
-  const sent=oq?allSent.filter(l=>(l.name||'').toLowerCase().includes(oq)||(l.address||'').toLowerCase().includes(oq)||(l.outreachEmail||'').toLowerCase().includes(oq)||(l.type||'').toLowerCase().replace(/_/g,' ').includes(oq)||(l.status||'').toLowerCase().includes(oq)):allSent;
+  const df=document.getElementById('o-date-filter')?.value||'';
+  // Populate date dropdown with unique sent dates
+  const dateSel=document.getElementById('o-date-filter');
+  if(dateSel){
+    const dates=[...new Set(allSent.filter(l=>l.outreachSentAt).map(l=>new Date(l.outreachSentAt).toLocaleDateString()))];
+    const prev=dateSel.value;
+    dateSel.innerHTML='<option value="">All dates</option>'+dates.map(d=>`<option value="${d}"${d===prev?' selected':''}>${d}</option>`).join('');
+  }
+  let sent=allSent;
+  if(oq) sent=sent.filter(l=>(l.name||'').toLowerCase().includes(oq)||(l.address||'').toLowerCase().includes(oq)||(l.outreachEmail||'').toLowerCase().includes(oq)||(l.type||'').toLowerCase().replace(/_/g,' ').includes(oq)||(l.status||'').toLowerCase().includes(oq));
+  if(df) sent=sent.filter(l=>l.outreachSentAt&&new Date(l.outreachSentAt).toLocaleDateString()===df);
   const e=document.getElementById('o-e'),t=document.getElementById('o-tbl');
   document.getElementById('o-badge').textContent=oq?sent.length+'/'+allSent.length+' sent':allSent.length+' sent';
   if(!sent.length){e.style.display='flex';e.querySelector('.et').textContent=oq?'No Matches':'No Outreach Sent Yet';e.querySelector('.es').textContent=oq?'Try a different search term':'Build demo sites, then send outreach';t.style.display='none';return;}
@@ -1517,7 +1531,7 @@ function drawOut(){
     const tr=getLeadTracking(l.id);
     const trackHtml=(tr.opens||tr.clicks)?`${tr.opens?`<span class="ti ti-open">👁 ${tr.opens}</span> `:''}${tr.clicks?`<span class="ti ti-click">🔗 ${tr.clicks}</span>`:''}`:'<span style="color:var(--t4);font-size:9px">—</span>';
     return `<tr>
-    <td><input type="checkbox" class="o-cb" value="${l.id}" onchange="oSelUpd()"></td>
+    <td><input type="checkbox" class="o-cb" value="${l.id}"${oSel.has(l.id)?' checked':''} onchange="oSelUpd()"></td>
     <td style="color:var(--t4);font-family:var(--mono);font-size:9.5px">${i+1}</td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td style="font-family:var(--mono);font-size:10.5px;color:var(--t2)">${x(l.outreachEmail||'')}</td>
@@ -1533,6 +1547,7 @@ function drawOut(){
 let oSel=new Set();
 function oTogAll(checked){document.querySelectorAll('.o-cb').forEach(c=>{c.checked=checked;if(checked)oSel.add(c.value);else oSel.delete(c.value);});oSelUpd();}
 function oSelUpd(){oSel=new Set([...document.querySelectorAll('.o-cb:checked')].map(c=>c.value));const b=document.getElementById('o-fu-btn');b.textContent=oSel.size?`🔄 Follow-Up Selected (${oSel.size})`:'🔄 Follow-Up Selected';}
+function oSelectVisible(){document.querySelectorAll('.o-cb').forEach(c=>{c.checked=true;oSel.add(c.value);});oSelUpd();}
 async function batchFollowUp(){
   if(!oSel.size){alert('Select leads from the outreach log first');return;}
   btn('o-fu-btn','Sending...',true);
