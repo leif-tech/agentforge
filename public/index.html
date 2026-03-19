@@ -1530,7 +1530,7 @@ function drawOut(){
   // Populate date dropdown with unique sent dates
   const dateSel=document.getElementById('o-date-filter');
   if(dateSel){
-    const dates=[...new Set(allSent.filter(l=>l.outreachSentAt).map(l=>new Date(l.outreachSentAt).toLocaleDateString()))];
+    const dates=[...new Set(allSent.filter(l=>l.outreachSentAt).map(l=>new Date(l.outreachSentAt).toLocaleDateString()))].sort((a,b)=>new Date(b)-new Date(a));
     const prev=dateSel.value;
     dateSel.innerHTML='<option value="">All dates</option>'+dates.map(d=>`<option value="${d}"${d===prev?' selected':''}>${d}</option>`).join('');
   }
