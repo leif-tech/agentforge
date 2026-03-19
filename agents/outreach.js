@@ -62,6 +62,10 @@ function parseJSON(text) {
   return null;
 }
 
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function cleanCopy(obj) {
   if (!obj) return obj;
   for (const key of Object.keys(obj)) {
@@ -448,7 +452,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
 
     // Default paragraph
-    bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${line}</p>`;
+    bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${escapeHtml(line)}</p>`;
   }
 
   // For no-website outreach, always inject a demo site button if one wasn't already rendered

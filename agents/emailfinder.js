@@ -9,20 +9,28 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 // Shared browser instance (reused across calls)
 let browserInstance = null;
+let browserLaunching = null;
 let igLoggedIn = false;
 
 async function getBrowser() {
   if (browserInstance && browserInstance.connected) return browserInstance;
+  // If another call is already launching, wait for it
+  if (browserLaunching) return browserLaunching;
   // Close old disconnected browser if it exists
   if (browserInstance) { try { await browserInstance.close(); } catch {} }
-  browserInstance = await puppeteer.launch({
+  browserLaunching = puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     timeout: 20000
   });
-  igLoggedIn = false;
-  return browserInstance;
+  try {
+    browserInstance = await browserLaunching;
+    igLoggedIn = false;
+    return browserInstance;
+  } finally {
+    browserLaunching = null;
+  }
 }
 
 // Cleanup on process exit

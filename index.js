@@ -146,7 +146,11 @@ const SEQ_F = path.join(DATA,'sequences.json');
 const SCH_F = path.join(DATA,'scheduled.json');
 const TF = path.join(DATA,'tracking.json');
 const load = f => { try { return fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):[] } catch { return [] } };
-const save = (f,d) => fs.writeFileSync(f,JSON.stringify(d,null,2));
+const save = (f,d) => {
+  const tmp = f + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(d,null,2));
+  fs.renameSync(tmp, f);
+};
 let leads = load(LF), outreach = load(OF), replies = load(RF);
 let sequences = load(SEQ_F), scheduled = load(SCH_F), tracking = load(TF);
 
@@ -490,6 +494,13 @@ app.post('/api/outreach/batch', async (req,res) => {
     const { lead, index } = targets[i];
     const email = lead.foundEmail;
     emit(sessionId, { type:'outreach_batch', status:'sending', message:`[${i+1}/${targets.length}] Sending to ${lead.name} (${email})...`, progress: Math.round((i/targets.length)*100) });
+    const lockKey = `${lead.id}:${email}`;
+    if (sendingInProgress.has(lockKey)) {
+      emit(sessionId, { type:'outreach_batch', status:'error', message:`⏭ ${lead.name}: Already sending, skipped` });
+      failed++;
+      continue;
+    }
+    sendingInProgress.add(lockKey);
     try {
       if (!isValidEmail(email)) {
         emit(sessionId, { type:'outreach_batch', status:'error', message:`❌ ${lead.name}: Invalid email format (${email})` });
@@ -518,6 +529,8 @@ app.post('/api/outreach/batch', async (req,res) => {
     } catch(e) {
       failed++;
       emit(sessionId, { type:'outreach_batch', status:'error', message:`❌ ${lead.name}: ${e.message}` });
+    } finally {
+      sendingInProgress.delete(lockKey);
     }
     // Random delay 3-8 seconds
     const delay = 3000 + Math.random() * 5000;
@@ -965,6 +978,16 @@ app.get('/api/send-stats', (req,res) => {
 // ── TRACKING DATA ENDPOINT ───────────────────────────────────────────────
 app.get('/api/tracking', (req,res) => {
   res.json({ tracking });
+});
+
+// ── CRASH SAFETY ─────────────────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.message);
+  console.error(err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason instanceof Error ? reason.message : reason);
+  if (reason instanceof Error) console.error(reason.stack);
 });
 
 app.listen(PORT, () => {

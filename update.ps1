@@ -1,7 +1,7 @@
 # AgentForge Auto-Updater
 # Run this whenever Claude tells you there's an update: .\update.ps1
 
-$REPO = "C:\Users\soliv\OneDrive\Desktop\Donn\agentforge"
+$REPO = $PSScriptRoot
 Set-Location $REPO
 
 Write-Host ""

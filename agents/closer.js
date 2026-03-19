@@ -56,14 +56,15 @@ Return ONLY JSON, nothing else:
       }]
     }, { signal: controller.signal });
   } catch(e) {
-    clearTimeout(timer);
     if (e.name === 'AbortError' || e.message?.includes('abort')) {
       throw new Error('Anthropic API timed out after 60s. Try again.');
     }
     throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  clearTimeout(timer);
 
+  if (!msg?.content?.[0]?.text) throw new Error('Empty response from AI — try again.');
   const result = parseJSON(msg.content[0].text);
   if (!result?.body) throw new Error('Failed to generate response — try again.');
   onProgress({ status:'done', message:`✅ Response ready (${result.objectionType})` });
