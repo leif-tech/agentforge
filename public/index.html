@@ -786,7 +786,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <select id="o-date-filter" onchange="drawOut()" style="padding:7px 10px;font-size:11px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;cursor:pointer">
         <option value="">All dates</option>
       </select>
-      <button class="ab" onclick="oSelectVisible()" style="font-size:10px;white-space:nowrap;color:var(--cyan)">Select visible</button>
+      <button class="ab" id="o-sel-btn" onclick="oSelectVisible()" style="font-size:10px;white-space:nowrap;color:var(--cyan)">Select visible</button>
       <button class="ab" onclick="document.getElementById('o-search').value='';document.getElementById('o-date-filter').value='';oSel.clear();drawOut();oSelUpd()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
     </div>
     <div class="tw">
@@ -1537,6 +1537,8 @@ function drawOut(){
   let sent=allSent;
   if(oq) sent=sent.filter(l=>(l.name||'').toLowerCase().includes(oq)||(l.address||'').toLowerCase().includes(oq)||(l.outreachEmail||'').toLowerCase().includes(oq)||(l.type||'').toLowerCase().replace(/_/g,' ').includes(oq)||(l.status||'').toLowerCase().includes(oq));
   if(df) sent=sent.filter(l=>l.outreachSentAt&&new Date(l.outreachSentAt).toLocaleDateString()===df);
+  const selBtn=document.getElementById('o-sel-btn');
+  if(selBtn) selBtn.textContent=df?'Select all ('+sent.length+')':'Select visible';
   const e=document.getElementById('o-e'),t=document.getElementById('o-tbl');
   document.getElementById('o-badge').textContent=oq?sent.length+'/'+allSent.length+' sent':allSent.length+' sent';
   if(!sent.length){e.style.display='flex';e.querySelector('.et').textContent=oq?'No Matches':'No Outreach Sent Yet';e.querySelector('.es').textContent=oq?'Try a different search term':'Build demo sites, then send outreach';t.style.display='none';return;}
