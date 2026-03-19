@@ -967,7 +967,7 @@ app.get('/api/settings', (req,res) => res.json({
 }));
 
 app.post('/api/settings', (req,res) => {
-  const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken, fbEmail, fbPassword } = req.body;
+  const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken, fbEmail, fbPassword, brevoApiKey } = req.body;
   const ep = fs.existsSync(path.join(DATA_ROOT,'leads')) ? path.join(DATA_ROOT,'leads','.env') : path.join(__dirname,'.env');
   let env = fs.existsSync(ep)?fs.readFileSync(ep,'utf8'):'';
   const set = (k,v) => {
@@ -984,6 +984,7 @@ app.post('/api/settings', (req,res) => {
   set('CLOUDFLARE_API_TOKEN',cloudflareApiToken);
   set('FB_EMAIL',fbEmail);
   set('FB_PASSWORD',fbPassword);
+  set('BREVO_API_KEY',brevoApiKey);
   fs.writeFileSync(ep,env.trim());
   res.json({ok:true});
 });
@@ -1034,8 +1035,7 @@ app.listen(PORT, () => {
   console.log(`  Anthropic     : ${process.env.ANTHROPIC_API_KEY&&process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'?'✓ Ready':'✗ Add in Settings'}`);
   console.log(`  Hunter.io     : ${process.env.HUNTER_API_KEY?'✓ Ready':'✗ Add in Settings'}`);
   console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+') — 100/day':'✗ Add in Settings'}`);
-  console.log(`  Brevo Fallback: ${process.env.BREVO_API_KEY?'✓ Ready — 300/day, kicks in after Resend limit':'✗ Not configured'}`);
-  console.log(`  [debug] BREVO_API_KEY type=${typeof process.env.BREVO_API_KEY} len=${(process.env.BREVO_API_KEY||'').length} starts=${(process.env.BREVO_API_KEY||'').substring(0,8)}`);
+  console.log(`  Brevo Fallback: ${process.env.BREVO_API_KEY?'✓ Ready — 300/day, kicks in after Resend limit':'✗ Not configured — add via Settings page'}`);
   console.log(`  SMTP Fallback : ${process.env.SMTP_HOST&&process.env.SMTP_USER?'✓ Ready ('+process.env.SMTP_USER+') — last resort':'✗ Not configured'}`);
   console.log(`  Cloudflare    : ${process.env.CLOUDFLARE_ACCOUNT_ID&&process.env.CLOUDFLARE_API_TOKEN?'✓ Ready — sites deploy to pages.dev':'✗ Add in Settings (required for permanent URLs)'}\n`);
   if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {

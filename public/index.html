@@ -958,6 +958,17 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       </div>
       <button class="sbtn" onclick="saveSet('smtp')">Save Settings</button>
     </div>
+    <div class="scard">
+      <div class="scard-t">◎ Brevo Fallback <span class="ss-badge off" id="ss-brevo">Not Set</span></div>
+      <div class="f"><span>API Key</span><input type="password" id="set-brevo" placeholder="xkeysib-xxxxxxxx"></div>
+      <div class="ibox">
+        Free 300 emails/day via HTTPS API. Kicks in automatically when Resend's 100/day limit is reached.<br>
+        1. Sign up at <a href="https://www.brevo.com" target="_blank">brevo.com</a><br>
+        2. Go to SMTP & API → API Keys → Generate a new API key<br>
+        3. Paste it above
+      </div>
+      <button class="sbtn" onclick="saveSet('brevo')">Save Settings</button>
+    </div>
   </div>
 </div>
 
@@ -1102,6 +1113,7 @@ async function checkCfg(){
     setSS('ss-sm',s.hasSmtp);
     setSS('ss-cf',s.hasCloudflare);
     setSS('ss-fb',s.hasFacebook);
+    setSS('ss-brevo',s.hasBrevo);
     const saved='✓ Already saved — leave blank to keep';
     setSavedPlaceholder('set-ant', s.hasAnthropicKey, saved);
     setSavedPlaceholder('set-hunter', s.hasHunter, saved);
@@ -1112,6 +1124,9 @@ async function checkCfg(){
     if(s.resendFrom){document.getElementById('set-rf').value=s.resendFrom;}
     if(s.hasSmtp){
       setSavedPlaceholder('set-rk', true, saved);
+    }
+    if(s.hasBrevo){
+      setSavedPlaceholder('set-brevo', true, saved);
     }
   }catch{}
 }
@@ -1713,6 +1728,7 @@ async function saveSet(s){
   if(s==='cloudflare'){b.cloudflareAccountId=document.getElementById('set-cf-id').value.trim();b.cloudflareApiToken=document.getElementById('set-cf-token').value.trim();if(!b.cloudflareAccountId||!b.cloudflareApiToken){alert('Enter both Account ID and API Token');return;}}
   if(s==='facebook'){b.fbEmail=document.getElementById('set-fb-email').value.trim();b.fbPassword=document.getElementById('set-fb-pass').value.trim();if(!b.fbEmail||!b.fbPassword){alert('Enter both email and password');return;}}
   if(s==='smtp'){b.resendApiKey=document.getElementById('set-rk').value.trim();b.resendFrom=document.getElementById('set-rf').value.trim();if(!b.resendApiKey||!b.resendFrom){alert('Fill all fields');return;}}
+  if(s==='brevo'){b.brevoApiKey=document.getElementById('set-brevo').value.trim();if(!b.brevoApiKey){alert('Enter Brevo API key');return;}}
   await post('/api/settings',b);await checkCfg();alert('Saved ✓');
 }
 
