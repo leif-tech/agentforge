@@ -25,7 +25,7 @@ async function handleReply(lead, originalEmail, replyText, onProgress) {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 600,
       messages: [{ role:'user', content:
-`You are Leif, the founder of WebForge. You sent a cold outreach email to this business offering them something for free in exchange for a 5-minute call. This is your follow-up reply to their response.
+`You are Leif, the founder of ForgeAI. You sent a cold outreach email to this business offering them something for free in exchange for a 5-minute call. This is your follow-up reply to their response.
 
 The goal of every reply is ONE thing: get them on a 5-minute call. Not to sell pricing, not to close a deal, not to explain everything — just book the call. The call is where everything else happens.
 
@@ -49,7 +49,7 @@ Step 2: Write a reply (max 80 words) based on the type:
   negative   → Respect their decision warmly. Leave the door open. Let them know the free offer is still theirs if they ever change their mind.
 
 Tone: warm, confident, human — sounds like the founder who built this for them personally, not a salesperson. Never mention pricing. Never pitch. Always bring it back to the 5-minute call.
-Sign as Leif, WebForge.
+Sign as Leif, ForgeAI.
 
 Return ONLY JSON, nothing else:
 {"objectionType":"...","sentiment":"positive|neutral|negative","subject":"Re: [original subject]","body":"..."}`

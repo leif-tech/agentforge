@@ -34,7 +34,7 @@ app.use(session({
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
 const LOGIN_USER = process.env.LOGIN_USER || 'leif';
-const LOGIN_PASS = process.env.LOGIN_PASS || 'webforge2026';
+const LOGIN_PASS = process.env.LOGIN_PASS || 'forgeai2026';
 
 app.get('/login', (req, res) => {
   if (req.session.auth) return res.redirect('/');
