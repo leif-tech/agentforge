@@ -258,16 +258,16 @@ Goal: Get a reply by showing them a demo site you already built for them.
 - Paragraph 3: tell them you built a demo site for them with an AI chatbot already built in — the chatbot is trained on their actual business (services, hours, pricing) so it answers customer questions accurately 24/7. Do NOT include the URL in the text — just say you built it. A button will be added automatically below your text. Say it's just a starting point, a quick demo to show what's possible, and it can be fully customized to match their brand. It's theirs to keep, completely free.
 - Paragraph 4: make it clear the website is completely free. Then say you'd like to hop on a quick call — not to sell anything, but to understand what's actually slowing their business down day to day. Once you know their pain points, you'll show them exactly how AI can solve or improve those specific problems. Keep it casual and genuine. Something like "The site is yours, totally free. I'd just love a quick chat to hear what's actually giving you headaches in your business — then I'll show you how AI can take those problems off your plate." Do NOT say "customize" or "tailor". Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring."
 - Paragraph 5: end with one short soft question about the call, not about viewing the site (there's already a button for that). Examples: "Sound fair?", "Worth 5 minutes?", "Interested?". Must be under 8 words. Do NOT say "Want to see it?" or "Worth a quick look?" since the demo button is already there. The goal is just to get a reply about the call.
-- Sign off: MUST end with Leif on its own line, then ForgeAI on the next line. This is required, never skip it.
+- Sign off: MUST end with Leif on its own line, then ForgeAIAgent on the next line. This is required, never skip it.
 - Max length: 100 words
 
-CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought. The sign-off (Leif and ForgeAI) must always be present at the end.
+CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought. The sign-off (Leif and ForgeAIAgent) must always be present at the end.
 
 RULES:
 - Plain text only, no bullet points, bold, headers, or HTML
 - No "I hope this email finds you well" or "I came across your business"
 - No corporate words, no leverage, synergy, solutions, or optimize
-- Do not mention ForgeAI in the body, only in the sign-off
+- Do not mention ForgeAIAgent in the body, only in the sign-off
 - Do not list multiple services, one problem, one solution, one ask
 - Write like a real person emailing one specific business, not a mass campaign
 - Every sentence must earn its place, cut anything that doesn't add value
@@ -301,16 +301,16 @@ Goal: Get a reply by identifying a problem they recognize and offering one concr
 - Paragraph 3: pitch the solution — automated follow-up texts or emails after each appointment, seasonal reminders, and an AI chatbot on their website that's trained on their actual business (services, hours, pricing) so it answers customer questions accurately 24/7. Describe it simply and plainly.
 - Paragraph 4: make it clear you'll set up the automation completely free. Then say you'd like to get on a quick call — not to pitch, but to understand what's actually causing friction in their business day to day. Once you know their pain points, you'll show them how AI can solve or improve those specific problems. Keep it casual and genuine. Something like "I'll set this up for you, completely free. All I'd need is a quick chat to hear what's actually giving you headaches running your business — then I'll show you how AI can take those problems off your plate." Do NOT say "customize" or "tailor". Do NOT say "I'd love to learn what's working" or "figure out if there's anything worth exploring."
 - Paragraph 5: end with one short soft question that feels conversational and low stakes. Examples: "Worth a quick chat?", "Sound fair?", "Interested?". Must be under 8 words. The goal is just to get a reply.
-- Sign off: MUST end with Leif on its own line, then ForgeAI on the next line. This is required, never skip it.
+- Sign off: MUST end with Leif on its own line, then ForgeAIAgent on the next line. This is required, never skip it.
 - Max length: 110 words
 
-CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought. The sign-off (Leif and ForgeAI) must always be present at the end.
+CRITICAL FORMATTING RULE: Each paragraph above MUST be separated by a blank line in the output. Do not combine multiple points into one paragraph. The email must have clear visual spacing between each thought. The sign-off (Leif and ForgeAIAgent) must always be present at the end.
 
 RULES:
 - Plain text only, no bullet points, bold, headers, or HTML
 - No "I hope this email finds you well" or "I came across your business"
 - No corporate words, no leverage, synergy, solutions, or optimize
-- Do not mention ForgeAI in the body, only in the sign-off
+- Do not mention ForgeAIAgent in the body, only in the sign-off
 - Do not list multiple services, one problem, one solution, one ask
 - Write like a real person emailing one specific business, not a mass campaign
 - Every sentence must earn its place, cut anything that doesn't add value
@@ -360,7 +360,7 @@ async function sendViaBrevo(emailOpts) {
   if (!apiKey) throw new Error('Brevo API key not configured.');
   // Parse "Name <email>" format from the from field
   const fromMatch = emailOpts.from.match(/^(.+?)\s*<(.+?)>$/);
-  const senderName = fromMatch ? fromMatch[1].trim() : 'Leif from ForgeAI';
+  const senderName = fromMatch ? fromMatch[1].trim() : 'Leif';
   const senderEmail = fromMatch ? fromMatch[2].trim() : emailOpts.from;
   const res = await axios.post('https://api.brevo.com/v3/smtp/email', {
     sender: { name: senderName, email: senderEmail },
@@ -458,9 +458,9 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
     }
 
     // Sign-off: simple text signature, no images
-    if (/^(Leif|ForgeAI)$/i.test(trimmedLine)) {
+    if (/^(Leif|ForgeAI|ForgeAIAgent)$/i.test(trimmedLine)) {
       if (/^Leif$/i.test(trimmedLine)) {
-        bodyHtml += `<p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#333">Leif<br><span style="color:#888">ForgeAI</span></p>`;
+        bodyHtml += `<p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#333">Leif<br><span style="color:#888">ForgeAIAgent</span></p>`;
       }
       continue;
     }
@@ -478,7 +478,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
   const emailPayload = {
-    from: `Leif from ForgeAI <${fromEmail}>`,
+    from: `Leif <${fromEmail}>`,
     to: emailAddress,
     reply_to: fromEmail,
     headers: {
@@ -576,7 +576,7 @@ async function generateFollowUpEmail(lead, step, previousSubject) {
   ];
   const angle = angles[Math.min(step - 1, angles.length - 1)];
 
-  const prompt = `You are Leif from ForgeAI, writing a follow-up cold email to a local US business owner who was already contacted but hasn't replied.
+  const prompt = `You are Leif from ForgeAIAgent, writing a follow-up cold email to a local US business owner who was already contacted but hasn't replied.
 
 ${scenarioDesc}
 
@@ -600,7 +600,7 @@ RULES:
 - Always mention the AI chatbot (trained on their actual business) and automated follow-up system (texts, emails, or chat) as part of the value. Keep it brief, not a full re-pitch.
 - NEVER include any URLs, links, or domain names in the email body. If the lead has no website, a demo button is added automatically below the email.
 - End with a single low-pressure question. Vary it slightly from "Worth a quick chat?" Examples: "Still worth 5 minutes?", "Want to take a look?", "Worth a call this week?"
-- Sign off: Leif on its own line, then ForgeAI on the next line.
+- Sign off: Leif on its own line, then ForgeAIAgent on the next line.
 - NEVER use em dashes (—) anywhere. Use commas or periods instead.
 - No exclamation points. No filler phrases. No semicolons.
 - No corporate language, no buzzwords.
