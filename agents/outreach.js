@@ -1,5 +1,4 @@
 const Anthropic = require('@anthropic-ai/sdk');
-const nodemailer = require('nodemailer');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
@@ -7,8 +6,43 @@ const fs = require('fs');
 // ── DAILY SEND COUNTER (resets every 24 hours) ──────────────────────────
 const DATA_ROOT = process.env.DATA_DIR || path.join(__dirname, '..');
 const COUNTER_FILE = path.join(DATA_ROOT, 'leads', '.send-counter.json');
+const WARMUP_FILE = path.join(DATA_ROOT, 'leads', '.warmup.json');
 const RESEND_DAILY_LIMIT = 100;
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// ── WARMUP: gradual daily limit ramp to build domain reputation ─────────
+// Days sending → max emails allowed that day (across all providers)
+const WARMUP_SCHEDULE = [
+  10, 15, 20, 30, 40, 50, 65, 80, 100, 150,
+  200, 250, 300, 400  // day 14+: full capacity (Resend 100 + Brevo 300)
+];
+
+function loadWarmup() {
+  try {
+    return JSON.parse(fs.readFileSync(WARMUP_FILE, 'utf8'));
+  } catch {
+    const data = { firstSendDate: null, totalDaysSending: 0 };
+    try { fs.writeFileSync(WARMUP_FILE, JSON.stringify(data)); } catch {}
+    return data;
+  }
+}
+
+function getWarmupLimit() {
+  const warmup = loadWarmup();
+  if (!warmup.firstSendDate) return WARMUP_SCHEDULE[0];
+  const daysSinceFirst = Math.floor((Date.now() - new Date(warmup.firstSendDate).getTime()) / (24*60*60*1000));
+  const idx = Math.min(daysSinceFirst, WARMUP_SCHEDULE.length - 1);
+  return WARMUP_SCHEDULE[idx];
+}
+
+function markWarmupDay() {
+  const warmup = loadWarmup();
+  if (!warmup.firstSendDate) {
+    warmup.firstSendDate = new Date().toISOString();
+    warmup.totalDaysSending = 1;
+  }
+  try { fs.writeFileSync(WARMUP_FILE, JSON.stringify(warmup)); } catch {}
+}
 
 function loadCounter() {
   try {
@@ -34,15 +68,20 @@ function getSendStats() {
   const BREVO_DAILY_LIMIT = 300;
   const resendCount = counter.resend || 0;
   const brevoCount = counter.brevo || 0;
+  const totalSent = resendCount + brevoCount + (counter.smtp || 0);
+  const warmupLimit = getWarmupLimit();
+  const warmupRemaining = Math.max(0, warmupLimit - totalSent);
   return {
     resend: resendCount,
     brevo: brevoCount,
     smtp: counter.smtp || 0,
-    total: resendCount + brevoCount + (counter.smtp || 0),
+    total: totalSent,
     resendLimit: RESEND_DAILY_LIMIT,
     brevoLimit: BREVO_DAILY_LIMIT,
     resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - resendCount),
     brevoRemaining: Math.max(0, BREVO_DAILY_LIMIT - brevoCount),
+    warmupLimit,
+    warmupRemaining,
     usingBrevo: resendCount >= RESEND_DAILY_LIMIT,
     resetsIn: `${resetInHours}h ${resetInMinutes}m`,
     resetsAtMs: counter.startedAt + RESET_INTERVAL_MS
@@ -315,43 +354,22 @@ async function sendWithRetry(resend, emailOpts, maxRetries = 2) {
   }
 }
 
-function getSmtpTransport() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT) || 587,
-    secure: (parseInt(SMTP_PORT) || 587) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    connectionTimeout: 10000,
-    greetingTimeout: 8000,
-    socketTimeout: 20000,
-  });
-}
-
-async function sendViaSmtp(emailOpts) {
-  const transport = getSmtpTransport();
-  if (!transport) throw new Error('SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
-  const result = await transport.sendMail({
-    from: emailOpts.from, to: emailOpts.to,
-    subject: emailOpts.subject, text: emailOpts.text, html: emailOpts.html
-  });
-  return { id: result.messageId, method: 'smtp' };
-}
 
 async function sendViaBrevo(emailOpts) {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) throw new Error('Brevo API key not configured.');
   // Parse "Name <email>" format from the from field
   const fromMatch = emailOpts.from.match(/^(.+?)\s*<(.+?)>$/);
-  const senderName = fromMatch ? fromMatch[1].trim() : 'Leif | ForgeAI';
+  const senderName = fromMatch ? fromMatch[1].trim() : 'Leif from ForgeAI';
   const senderEmail = fromMatch ? fromMatch[2].trim() : emailOpts.from;
   const res = await axios.post('https://api.brevo.com/v3/smtp/email', {
     sender: { name: senderName, email: senderEmail },
+    replyTo: { email: emailOpts.reply_to || senderEmail },
     to: [{ email: emailOpts.to }],
     subject: emailOpts.subject,
     textContent: emailOpts.text,
     htmlContent: emailOpts.html,
+    headers: emailOpts.headers || {},
   }, {
     headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
     timeout: 15000,
@@ -424,97 +442,70 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   const fromEmail = RESEND_FROM || SMTP_USER || 'leif@forgeaiagent.com';
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
-  // Replace preview URL in body with click-tracked URL and format email
+  // Format email — minimal HTML that looks like a real person sent it
   let bodyText = copy.body;
   const lines = bodyText.split('\n').filter(l => l.trim());
   let bodyHtml = '';
 
   for (const l of lines) {
-    let line = l;
-    if (trackingOpts?.clickUrl && previewUrl) {
-      const escaped = previewUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
-    }
-
-    // URL-only line — render as a button only (only for no-website outreach)
+    const line = l;
     const trimmedLine = line.trim();
+
+    // URL-only line for no-website outreach — render as a button (demo site CTA)
     if (!isHasWebsite && trimmedLine.match(/^https?:\/\/\S+$/) && previewUrl && trimmedLine.includes(previewUrl.split('/')[2])) {
-      const href = trackingOpts?.clickUrl || line;
-      bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 24px">
-        <tr><td>
-          <a href="${href}" style="display:inline-block;padding:14px 28px;background:#111;color:#fff;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:.02em">View Your Demo Website &rarr;</a>
-        </td></tr>
-      </table>`;
+      bodyHtml += `<p style="margin:16px 0 20px"><a href="${escapeHtml(previewUrl)}" style="display:inline-block;padding:12px 24px;background:#111;color:#fff;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px">View Your Demo Website</a></p>`;
       continue;
     }
 
-    // Sign-off: "Leif" or "ForgeAI" alone — render signature block with profile photo
-    if (/^(Leif|ForgeAI)$/i.test(line.trim())) {
-      if (/^Leif$/i.test(line.trim())) {
-        const profileUrl = (process.env.PUBLIC_URL || 'https://forgeaiagent.com') + '/profile.jpg';
-        bodyHtml += `<table cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0">
-          <tr>
-            <td style="vertical-align:middle;padding-right:14px">
-              <img src="${profileUrl}" width="50" height="50" style="border-radius:50%;display:block;object-fit:cover" alt="Leif" />
-            </td>
-            <td style="vertical-align:middle">
-              <p style="margin:0;font-size:15px;font-weight:600;color:#111;line-height:1.4">Leif</p>
-              <p style="margin:2px 0 0;font-size:12px;font-weight:500;color:#888;line-height:1.4;letter-spacing:.04em">ForgeAI</p>
-            </td>
-          </tr>
-        </table>`;
+    // Sign-off: simple text signature, no images
+    if (/^(Leif|ForgeAI)$/i.test(trimmedLine)) {
+      if (/^Leif$/i.test(trimmedLine)) {
+        bodyHtml += `<p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#333">Leif<br><span style="color:#888">ForgeAI</span></p>`;
       }
       continue;
     }
 
-    // Default styling for the ask paragraph (no bold emphasis)
-
-
-    // Default paragraph
-    bodyHtml += `<p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333">${escapeHtml(line)}</p>`;
+    // Default paragraph — plain styling
+    bodyHtml += `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#333">${escapeHtml(line)}</p>`;
   }
 
-  // For no-website outreach, always inject a demo site button if one wasn't already rendered
+  // For no-website outreach, inject demo button if not already in body
   if (!isHasWebsite && previewUrl && !bodyHtml.includes('View Your Demo Website')) {
-    const href = trackingOpts?.clickUrl || previewUrl;
-    bodyHtml += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 24px">
-      <tr><td>
-        <a href="${href}" style="display:inline-block;padding:14px 28px;background:#111;color:#fff;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:.02em">View Your Demo Website &rarr;</a>
-      </td></tr>
-    </table>`;
+    bodyHtml += `<p style="margin:16px 0 20px"><a href="${escapeHtml(previewUrl)}" style="display:inline-block;padding:12px 24px;background:#111;color:#fff;font-size:14px;font-weight:600;text-decoration:none;border-radius:6px">View Your Demo Website</a></p>`;
   }
 
-  // Tracking pixel HTML
+  // Tracking pixel (only present for follow-ups)
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
   const emailPayload = {
-    from: `Leif | ForgeAI <${fromEmail}>`,
+    from: `Leif from ForgeAI <${fromEmail}>`,
     to: emailAddress,
+    reply_to: fromEmail,
+    headers: {
+      'List-Unsubscribe': `<mailto:${fromEmail}?subject=unsubscribe>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+    },
     subject: copy.subject,
     text: copy.body,
-    html: `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff">
-      <tr><td align="left" style="padding:24px 32px">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:560px">
-          <!-- BODY -->
-          <tr><td style="background:#ffffff;padding:0">
-            ${bodyHtml}
-          </td></tr>
-        </table>
-        ${pixelHtml}
-      </td></tr>
-    </table>`
+    html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:560px">${bodyHtml}${pixelHtml}</div>`
   };
 
   let data;
   let sendMethod;
 
-  // Check counters first to decide which provider to use
+  // Check warmup limit first
   const currentStats = getSendStats();
+  if (currentStats.warmupRemaining <= 0) {
+    const err = new Error(`Warmup limit reached (${currentStats.warmupLimit}/day). Sending more risks spam flags. Limit increases daily. Resets in ${currentStats.resetsIn}`);
+    err.dailyLimitReached = true;
+    throw err;
+  }
+  markWarmupDay();
+
   const resendAvailable = RESEND_API_KEY && RESEND_FROM && currentStats.resendRemaining > 0;
   const brevoAvailable = BREVO_API_KEY && currentStats.brevoRemaining > 0;
 
-  // Resend (100/day) → Brevo (300/day) → SMTP last resort
+  // Resend (100/day) → Brevo (300/day)
   if (resendAvailable) {
     try {
       const { Resend } = require('resend');

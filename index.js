@@ -462,18 +462,11 @@ app.post('/api/outreach/send', async (req,res) => {
   res.json({ status:'started' });
   emit(sessionId, { type:'outreach', status:'start', message:`📧 Preparing email for ${lead.name}...` });
   try {
-    // Prepare tracking (but don't save until send succeeds)
-    const trackingId = randomUUID();
+    // No tracking pixel or click redirect on initial outreach — direct URLs only
     const previewUrl = lead.previewUrl||getBase();
-    const trackingOpts = {
-      pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
-      clickUrl: `${getBase()}/c/${trackingId}`
-    };
+    const trackingOpts = {};
 
     const result = await sendOutreach(lead, previewUrl, emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body, trackingOpts, outreachType);
-    // Only create tracking record AFTER successful send
-    const trackRec = { trackingId, leadId:id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() };
-    tracking.push(trackRec); save(TF, tracking);
     outreach.push({ leadId:id, lead:lead.name, ...result });
     save(OF,outreach);
     leads[index].status='Outreach Sent';
@@ -520,17 +513,11 @@ app.post('/api/outreach/batch', async (req,res) => {
         failed++;
         continue;
       }
-      const trackingId = randomUUID();
+      // No tracking pixel or click redirect on initial outreach — direct URLs only
       const previewUrl = lead.previewUrl||getBase();
-      const trackingOpts = {
-        pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
-        clickUrl: `${getBase()}/c/${trackingId}`
-      };
+      const trackingOpts = {};
       const autoType = lead.website ? 'has_website' : 'no_website';
       const result = await sendOutreach(lead, previewUrl, email, () => {}, null, null, trackingOpts, autoType);
-      // Only create tracking record AFTER successful send
-      tracking.push({ trackingId, leadId:lead.id, type:'outreach', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:new Date().toISOString() });
-      save(TF, tracking);
       outreach.push({ leadId:lead.id, lead:lead.name, ...result });
       save(OF, outreach);
       leads[index].status='Outreach Sent';
@@ -643,17 +630,11 @@ app.post('/api/scheduled/process', async (req,res) => {
     const f = findLead(s.leadId);
     if (!f) { s.status='cancelled'; continue; }
     try {
-      const trackingId = randomUUID();
+      // No tracking on scheduled initial sends — direct URLs only
       const previewUrl = f.lead.previewUrl||getBase();
-      const trackingOpts = {
-        pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
-        clickUrl: `${getBase()}/c/${trackingId}`
-      };
+      const trackingOpts = {};
       const autoType = f.lead.website ? 'has_website' : 'no_website';
       const result = await sendOutreach(f.lead, previewUrl, s.emailAddress, ()=>{}, s.subject||null, s.body||null, trackingOpts, autoType);
-      // Only create tracking record AFTER successful send
-      tracking.push({ trackingId, leadId:s.leadId, type:'scheduled', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
-      save(TF, tracking);
       outreach.push({ leadId:s.leadId, lead:f.lead.name, ...result });
       save(OF, outreach);
       leads[f.index].status='Outreach Sent';
