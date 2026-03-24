@@ -6,43 +6,9 @@ const fs = require('fs');
 // ── DAILY SEND COUNTER (resets every 24 hours) ──────────────────────────
 const DATA_ROOT = process.env.DATA_DIR || path.join(__dirname, '..');
 const COUNTER_FILE = path.join(DATA_ROOT, 'leads', '.send-counter.json');
-const WARMUP_FILE = path.join(DATA_ROOT, 'leads', '.warmup.json');
 const RESEND_DAILY_LIMIT = 100;
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// ── WARMUP: gradual daily limit ramp to build domain reputation ─────────
-// Days sending → max emails allowed that day (across all providers)
-const WARMUP_SCHEDULE = [
-  10, 15, 20, 30, 40, 50, 65, 80, 100, 150,
-  200, 250, 300, 400  // day 14+: full capacity (Resend 100 + Brevo 300)
-];
-
-function loadWarmup() {
-  try {
-    return JSON.parse(fs.readFileSync(WARMUP_FILE, 'utf8'));
-  } catch {
-    const data = { firstSendDate: null, totalDaysSending: 0 };
-    try { fs.writeFileSync(WARMUP_FILE, JSON.stringify(data)); } catch {}
-    return data;
-  }
-}
-
-function getWarmupLimit() {
-  const warmup = loadWarmup();
-  if (!warmup.firstSendDate) return WARMUP_SCHEDULE[0];
-  const daysSinceFirst = Math.floor((Date.now() - new Date(warmup.firstSendDate).getTime()) / (24*60*60*1000));
-  const idx = Math.min(daysSinceFirst, WARMUP_SCHEDULE.length - 1);
-  return WARMUP_SCHEDULE[idx];
-}
-
-function markWarmupDay() {
-  const warmup = loadWarmup();
-  if (!warmup.firstSendDate) {
-    warmup.firstSendDate = new Date().toISOString();
-    warmup.totalDaysSending = 1;
-  }
-  try { fs.writeFileSync(WARMUP_FILE, JSON.stringify(warmup)); } catch {}
-}
 
 function loadCounter() {
   try {
@@ -69,8 +35,6 @@ function getSendStats() {
   const resendCount = counter.resend || 0;
   const brevoCount = counter.brevo || 0;
   const totalSent = resendCount + brevoCount + (counter.smtp || 0);
-  const warmupLimit = getWarmupLimit();
-  const warmupRemaining = Math.max(0, warmupLimit - totalSent);
   return {
     resend: resendCount,
     brevo: brevoCount,
@@ -80,8 +44,6 @@ function getSendStats() {
     brevoLimit: BREVO_DAILY_LIMIT,
     resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - resendCount),
     brevoRemaining: Math.max(0, BREVO_DAILY_LIMIT - brevoCount),
-    warmupLimit,
-    warmupRemaining,
     usingBrevo: resendCount >= RESEND_DAILY_LIMIT,
     resetsIn: `${resetInHours}h ${resetInMinutes}m`,
     resetsAtMs: counter.startedAt + RESET_INTERVAL_MS
@@ -493,15 +455,7 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   let data;
   let sendMethod;
 
-  // Check warmup limit first
   const currentStats = getSendStats();
-  if (currentStats.warmupRemaining <= 0) {
-    const err = new Error(`Warmup limit reached (${currentStats.warmupLimit}/day). Sending more risks spam flags. Limit increases daily. Resets in ${currentStats.resetsIn}`);
-    err.dailyLimitReached = true;
-    throw err;
-  }
-  markWarmupDay();
-
   const resendAvailable = RESEND_API_KEY && RESEND_FROM && currentStats.resendRemaining > 0;
   const brevoAvailable = BREVO_API_KEY && currentStats.brevoRemaining > 0;
 
