@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /blog
+Allow: /blog/
+Disallow: /api/
+Disallow: /login
+Disallow: /logout
+Disallow: /sites/
+
+Sitemap: https://forgeaiagent.com/sitemap.xml

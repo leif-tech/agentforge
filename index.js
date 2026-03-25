@@ -43,6 +43,7 @@ app.get('/login', (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
 <title>AgentForge — Login</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23060810'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='13' fill='%2300e5ff'>AF</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -228,9 +229,33 @@ app.get('/c/:trackingId', (req, res) => {
   res.redirect(rec?.targetUrl || '/');
 });
 
+// ── PUBLIC ROUTES (no auth required, SEO-crawlable) ─────────────────────
+app.use(express.static(path.join(__dirname,'public','seo'), {
+  setHeaders: (res, p) => {
+    if (p.endsWith('.html')) {
+      res.setHeader('Cache-Control','public, max-age=3600');
+    }
+    if (p.endsWith('.xml') || p.endsWith('.txt')) {
+      res.setHeader('Cache-Control','public, max-age=3600');
+    }
+  }
+}));
+app.get('/blog', (req, res) => res.sendFile(path.join(__dirname,'public','seo','blog','index.html')));
+app.get('/blog/:slug', (req, res) => {
+  const file = path.join(__dirname,'public','seo','blog', req.params.slug + '.html');
+  if (fs.existsSync(file)) return res.sendFile(file);
+  res.status(404).send('Not found');
+});
+
+// ── LANDING PAGE (public, SEO-crawlable homepage for non-authed visitors) ─
+app.get('/', (req, res, next) => {
+  if (req.session.auth) return next();
+  res.sendFile(path.join(__dirname,'public','seo','landing.html'));
+});
+
 // ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  if (req.path === '/login' || req.path === '/logout' || req.path === '/profile.jpg') return next();
+  if (req.path === '/login' || req.path === '/logout' || req.path === '/profile.jpg' || req.path === '/profile.webp') return next();
   if (req.session.auth) return next();
   res.redirect('/login');
 });
