@@ -607,6 +607,8 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
       save(TF, tracking);
       outreach.push({ leadId:lead.id, lead:lead.name, type:'followup', ...result });
       save(OF, outreach);
+      leads[index].followupCount = (leads[index].followupCount || 0) + 1;
+      save(LF, leads);
       sent++;
       emit(sessionId, { type:'followup_batch', status:'sent', message:`✅ [${sent}/${targets.length}] Follow-up sent to ${lead.name}` });
     } catch(e) {
@@ -741,6 +743,8 @@ app.post('/api/sequences/process', async (req,res) => {
         // Only create tracking record AFTER successful send
         tracking.push({ trackingId, leadId:seq.leadId, type:'followup', opens:[], clicks:[], targetUrl:previewUrl, abVariant:null, createdAt:now });
         step.status='sent'; step.sentAt=new Date().toISOString();
+        leads[f.index].followupCount = (leads[f.index].followupCount || 0) + 1;
+        save(LF, leads);
         sent++;
         emit(sessionId, { type:'sequence_sent', leadId:seq.leadId, step:step.step, message:`✅ Follow-up ${step.step}/3 sent to ${f.lead.name}` });
       } catch(e) {
