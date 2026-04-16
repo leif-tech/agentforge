@@ -280,8 +280,70 @@ app.get('/blog/:slug', (req, res) => {
 // Landing-page contact form (public, no auth).
 const CF = path.join(DATA,'contacts.json');
 let contacts = load(CF);
-app.post('/api/contact', (req, res) => {
-  const { name, business, type, email } = req.body || {};
+
+// In-memory rate limiter: max 5 submissions per IP per minute.
+const _contactHits = new Map();
+function contactRateLimited(ip) {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const max = 5;
+  const hits = (_contactHits.get(ip) || []).filter(t => now - t < windowMs);
+  hits.push(now);
+  _contactHits.set(ip, hits);
+  // Opportunistic cleanup so the map doesn't grow forever.
+  if (_contactHits.size > 1000) {
+    for (const [k, v] of _contactHits) {
+      if (!v.length || now - v[v.length - 1] > windowMs) _contactHits.delete(k);
+    }
+  }
+  return hits.length > max;
+}
+
+async function sendContactNotification(record) {
+  const { RESEND_API_KEY, RESEND_FROM } = process.env;
+  const notifyTo = process.env.CONTACT_NOTIFY_EMAIL || 'leif@forgeaiagent.com';
+  if (!RESEND_API_KEY || !RESEND_FROM) return;
+  try {
+    const { Resend } = require('resend');
+    const resend = new Resend(RESEND_API_KEY);
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    await resend.emails.send({
+      from: `Forge AI Leads <${RESEND_FROM}>`,
+      to: notifyTo,
+      replyTo: record.email,
+      subject: `New lead: ${record.business || record.name}`,
+      text: `Name: ${record.name}\nBusiness: ${record.business}\nType: ${record.type}\nEmail: ${record.email}\nSubmitted: ${record.submittedAt}\nIP: ${record.ip}`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;max-width:560px;margin:0 auto">
+          <div style="background:#0f172a;padding:20px 24px;border-radius:10px 10px 0 0">
+            <span style="font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em">FORGE <span style="color:#60a5fa">AI</span></span>
+            <span style="margin-left:10px;font-size:11px;color:#94a3b8">NEW LEAD</span>
+          </div>
+          <div style="background:#fff;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px">
+            <h2 style="margin:0 0 18px;font-size:18px;color:#0f172a">${esc(record.business || record.name)}</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
+              <tr><td style="padding:6px 0;color:#64748b;width:120px">Contact</td><td style="padding:6px 0"><strong>${esc(record.name)}</strong></td></tr>
+              <tr><td style="padding:6px 0;color:#64748b">Business</td><td style="padding:6px 0">${esc(record.business) || '<em>not provided</em>'}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b">Type</td><td style="padding:6px 0">${esc(record.type) || '<em>not provided</em>'}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b">Email</td><td style="padding:6px 0"><a href="mailto:${esc(record.email)}" style="color:#2563eb;text-decoration:none">${esc(record.email)}</a></td></tr>
+              <tr><td style="padding:6px 0;color:#64748b">Submitted</td><td style="padding:6px 0">${esc(record.submittedAt)}</td></tr>
+            </table>
+            <p style="margin:22px 0 0;font-size:12px;color:#94a3b8">Reply directly to this email to get in touch with the lead.</p>
+          </div>
+        </div>`
+    });
+  } catch (e) {
+    console.error('[contact-notify]', e.message);
+  }
+}
+
+app.post('/api/contact', async (req, res) => {
+  const ip = (req.headers['x-forwarded-for']?.split(',')[0] || req.ip || '').trim();
+  if (contactRateLimited(ip)) return res.status(429).json({ error: 'Too many submissions. Try again in a minute.' });
+  const body = req.body || {};
+  // Honeypot: bots fill every field. If 'website' is non-empty, silently accept and drop.
+  if (body.website) return res.json({ ok: true });
+  const { name, business, type, email } = body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
   const record = {
@@ -291,12 +353,14 @@ app.post('/api/contact', (req, res) => {
     type: String(type||'').slice(0,200),
     email: String(email).slice(0,200),
     submittedAt: new Date().toISOString(),
-    ip: req.ip || req.connection?.remoteAddress || ''
+    ip
   };
   contacts.push(record);
   save(CF, contacts);
   console.log(`[contact] ${record.name} | ${record.business} | ${record.type} | ${record.email}`);
   res.json({ ok: true });
+  // Fire-and-forget notification so the response isn't blocked on SMTP.
+  sendContactNotification(record);
 });
 
 // ── LANDING PAGE (public, SEO-crawlable homepage for non-authed visitors) ─

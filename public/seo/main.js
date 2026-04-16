@@ -59,7 +59,8 @@ form.addEventListener('submit', async (e) => {
       name: form.name.value,
       business: form.business.value,
       type: form.type.value,
-      email: form.email.value
+      email: form.email.value,
+      website: form.website ? form.website.value : ''
     };
 
     const res = await fetch('/api/contact', {
