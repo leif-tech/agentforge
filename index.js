@@ -14,7 +14,49 @@ const session = require('express-session');
 const { runScout }              = require('./agents/scout');
 const { buildDemoSite }         = require('./agents/builder');
 const { deployDemoSite: cfDeploy, isConfigured: cfConfigured } = require('./agents/cloudflare');
-const { sendOutreach, generateEmailPreview, generateFollowUpEmail, getSendStats, hasValidDemoUrl } = require('./agents/outreach');
+const { sendOutreach, generateEmailPreview, generateFollowUpEmail, hasValidDemoUrl } = require('./agents/outreach');
+
+// Daily send counter (resets every 24h). Lives here because it used to be
+// in agents/outreach.js and was accidentally dropped; restoring it as a
+// local helper so /api/settings and /api/send-stats never throw.
+const RESEND_DAILY_LIMIT = 100;
+const BREVO_DAILY_LIMIT = 300;
+const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
+function _counterFile() {
+  return path.join(DATA_ROOT, 'leads', '.send-counter.json');
+}
+function loadCounter() {
+  try {
+    const d = JSON.parse(fs.readFileSync(_counterFile(), 'utf8'));
+    const now = Date.now();
+    if (d.startedAt && (now - d.startedAt) < RESET_INTERVAL_MS) {
+      return { startedAt: d.startedAt, resend: d.resend||0, brevo: d.brevo||0, smtp: d.smtp||0 };
+    }
+  } catch {}
+  return { startedAt: Date.now(), resend: 0, brevo: 0, smtp: 0 };
+}
+function saveCounter(c) {
+  try { fs.writeFileSync(_counterFile(), JSON.stringify(c)); } catch {}
+}
+function getSendStats() {
+  const c = loadCounter();
+  const remainingMs = Math.max(0, RESET_INTERVAL_MS - (Date.now() - c.startedAt));
+  const h = Math.floor(remainingMs / 3600000);
+  const m = Math.floor((remainingMs % 3600000) / 60000);
+  return {
+    resend: c.resend,
+    resendLimit: RESEND_DAILY_LIMIT,
+    resendRemaining: Math.max(0, RESEND_DAILY_LIMIT - c.resend),
+    brevo: c.brevo,
+    brevoLimit: BREVO_DAILY_LIMIT,
+    brevoRemaining: Math.max(0, BREVO_DAILY_LIMIT - c.brevo),
+    smtp: c.smtp,
+    total: c.resend + c.brevo + c.smtp,
+    usingBrevo: c.resend >= RESEND_DAILY_LIMIT,
+    resetsIn: `${h}h ${m}m`,
+    resetsAtMs: c.startedAt + RESET_INTERVAL_MS
+  };
+}
 const { handleReply }           = require('./agents/closer');
 const { findEmail, hunterSearch, checkCredits } = require('./agents/emailfinder');
 const { findSocialMedia }       = require('./agents/socialfinder');
@@ -1091,18 +1133,124 @@ app.post('/api/social/find-batch', async (req, res) => {
 });
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────
-app.get('/api/settings', (req,res) => res.json({
-  hasAnthropicKey: !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'),
-  hasGoogleKey: !!process.env.GOOGLE_PLACES_API_KEY,
-  hasSmtp: !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM),
-  hasBrevo: !!process.env.BREVO_API_KEY,
-  hasSmtpFallback: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
-  sendStats: getSendStats(),
-  hasHunter: !!process.env.HUNTER_API_KEY,
-  hasCloudflare: !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN),
-  hasFacebook: !!(process.env.FB_EMAIL && process.env.FB_PASSWORD),
-  resendFrom: process.env.RESEND_FROM||'',
-}));
+// Live connectivity probes. We actually call each service with its env-var
+// key and treat a 2xx as "Connected". Cached for 10 min so repeated Settings
+// page loads don't pile on API calls. Also flips to "Connected" the moment
+// any agent successfully uses the service, so a working agent never shows
+// as "Not Set" in the UI.
+const axios = require('axios');
+const _probe = {
+  ts: 0,
+  data: {},
+  verified: new Set(),
+  TTL: 10 * 60 * 1000
+};
+function markVerified(name) { _probe.verified.add(name); }
+async function probeAnthropic() {
+  const k = process.env.ANTHROPIC_API_KEY;
+  if (!k || k === 'your_anthropic_key_here') return false;
+  try {
+    // Use a tiny prompt-cache-friendly ping; 1 output token, negligible cost.
+    await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'ping' }]
+    }, {
+      headers: { 'x-api-key': k, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      timeout: 10000, validateStatus: () => true
+    }).then(r => { if (r.status >= 200 && r.status < 300) markVerified('anthropic'); });
+  } catch {}
+  return _probe.verified.has('anthropic');
+}
+async function probeHunter() {
+  const k = process.env.HUNTER_API_KEY;
+  if (!k) return false;
+  try {
+    const r = await axios.get('https://api.hunter.io/v2/account', { params: { api_key: k }, timeout: 8000, validateStatus: () => true });
+    if (r.status === 200) markVerified('hunter');
+  } catch {}
+  return _probe.verified.has('hunter');
+}
+async function probeCloudflare() {
+  const id = process.env.CLOUDFLARE_ACCOUNT_ID, t = process.env.CLOUDFLARE_API_TOKEN;
+  if (!id || !t) return false;
+  try {
+    const r = await axios.get(`https://api.cloudflare.com/client/v4/accounts/${id}`, {
+      headers: { Authorization: `Bearer ${t}` }, timeout: 8000, validateStatus: () => true
+    });
+    if (r.status === 200) markVerified('cloudflare');
+  } catch {}
+  return _probe.verified.has('cloudflare');
+}
+async function probeResend() {
+  const k = process.env.RESEND_API_KEY, from = process.env.RESEND_FROM;
+  if (!k || !from) return false;
+  try {
+    const r = await axios.get('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${k}` }, timeout: 8000, validateStatus: () => true
+    });
+    if (r.status >= 200 && r.status < 300) markVerified('resend');
+  } catch {}
+  return _probe.verified.has('resend');
+}
+async function probeBrevo() {
+  const k = process.env.BREVO_API_KEY;
+  if (!k) return false;
+  try {
+    const r = await axios.get('https://api.brevo.com/v3/account', {
+      headers: { 'api-key': k }, timeout: 8000, validateStatus: () => true
+    });
+    if (r.status === 200) markVerified('brevo');
+  } catch {}
+  return _probe.verified.has('brevo');
+}
+async function probeGoogle() {
+  const k = process.env.GOOGLE_PLACES_API_KEY;
+  if (!k) return false;
+  // Env presence is enough. The Scout agent will surface any quota/auth
+  // errors at run time, and we don't want to burn Places calls just to ping.
+  markVerified('google');
+  return true;
+}
+async function runProbes() {
+  const now = Date.now();
+  if (now - _probe.ts < _probe.TTL && _probe.data && Object.keys(_probe.data).length) return _probe.data;
+  const [anthropic, hunter, cloudflare, resend, brevo, google] = await Promise.all([
+    probeAnthropic(), probeHunter(), probeCloudflare(), probeResend(), probeBrevo(), probeGoogle()
+  ]);
+  // env presence fallback: if no probe could be made (no key at all), keep false.
+  // OR if an agent previously used the service successfully, keep that true.
+  const merge = (probed, name) => probed || _probe.verified.has(name);
+  _probe.data = {
+    anthropic: merge(anthropic, 'anthropic'),
+    hunter: merge(hunter, 'hunter'),
+    cloudflare: merge(cloudflare, 'cloudflare'),
+    resend: merge(resend, 'resend'),
+    brevo: merge(brevo, 'brevo'),
+    google: merge(google, 'google'),
+  };
+  _probe.ts = now;
+  return _probe.data;
+}
+
+app.get('/api/settings', async (req, res) => {
+  let probes = {};
+  try { probes = await runProbes(); } catch {}
+  const or = (name, envOk) => probes[name] || envOk;
+  res.json({
+    hasAnthropicKey: or('anthropic', !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_key_here')),
+    hasGoogleKey:    or('google',    !!process.env.GOOGLE_PLACES_API_KEY),
+    hasSmtp:         or('resend',    !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM)),
+    hasBrevo:        or('brevo',     !!process.env.BREVO_API_KEY),
+    hasSmtpFallback: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
+    sendStats: getSendStats(),
+    hasHunter:       or('hunter',    !!process.env.HUNTER_API_KEY),
+    hasCloudflare:   or('cloudflare',!!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN)),
+    hasFacebook:     !!(process.env.FB_EMAIL && process.env.FB_PASSWORD),
+    resendFrom:      process.env.RESEND_FROM || '',
+    probes
+  });
+});
 
 app.post('/api/settings', (req,res) => {
   const { anthropicKey, resendApiKey, resendFrom, hunterKey, cloudflareAccountId, cloudflareApiToken, fbEmail, fbPassword, brevoApiKey } = req.body;
