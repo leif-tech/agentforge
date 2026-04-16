@@ -17,40 +17,44 @@ function parseJSON(text) {
 function buildEmailPrompt(lead, previewUrl, type, outreachType) {
   const hasWebsite = outreachType === 'has_website' || (!outreachType && lead.website);
   const angleLine = hasWebsite
-    ? `They already have a website. Your angle is an upgrade: their current site feels dated or is leaving money on the table, and you mocked up a faster, cleaner, more modern version to show what a better one looks like.`
+    ? `They already have a website. You are NOT building them a new one and there is NO demo site to show. Your angle is a free redesign of the site they already have: it can be faster, cleaner, more modern, and you would add a few features (a chatbot that handles after-hours questions, a better contact flow, anything else that makes the site convert more of its traffic). All of this is free, and the owner keeps their existing domain and content. Describe the redesign as notes you made looking at their current site, to be walked through on the call. Do not use the word "demo" and do not suggest there is anything to click in this email.`
     : `They do not have a website yet. Your angle is building from scratch: you noticed they are missing an online presence despite strong reviews, and you went ahead and built them a real demo site so they can see what showing up online could look like.`;
+
+  const demoRuleLine = hasWebsite
+    ? `CRITICAL: There is NO demo site and NO button in this email. Do not promise anything to click, do not say "take a look below", do not include any URL or phrase like "here:" or "live at:". Refer naturally to notes you put together for their current site and offer to walk through them on the call.`
+    : `CRITICAL: Do NOT include any URL, link, or phrase like "here:" or "live at:" in the body. The recipient will see a prominent "View Your Demo Site" button immediately below your message that takes them to the demo. Refer to the demo naturally in the body ("I built you a demo", "the demo below", "the link below") but never paste a URL.`;
 
   return `Write a cold outreach email from Leif to the owner of "${lead.name}", a ${type} at ${lead.address}.
 Google rating: ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews' : 'not yet rated'}.
 
 ${angleLine}
 
-Leif is the founder of Forge AI. He runs the company. He personally found this business, built them something real, and is reaching out as the person behind it, not a company blasting mass emails, not an employee.
+Leif is the founder of Forge AI. He runs the company. He personally found this business, looked at what they have today, and is reaching out as the person behind it, not a company blasting mass emails, not an employee.
 
-CRITICAL: Do NOT include any URL, link, or phrase like "here:" or "live at:" in the body. The recipient will see a prominent "View Your Demo Site" button immediately below your message that takes them to the demo. Refer to the demo naturally in the body ("I built you a demo", "the demo below", "the link below") but never paste a URL.
+${demoRuleLine}
 
-What Leif is handing over, completely free:
-1. The live demo website (already built, revealed via the button)
+What Leif is handing over, completely free (adapt item 1 to the angle):
+1. ${hasWebsite ? 'A redesign of their current website (faster, cleaner, modern look) with added features like a chatbot for after-hours questions and a better contact flow, while they keep their existing domain and content' : 'The live demo website (already built, revealed via the button)'}
 2. A ready-to-post Instagram caption written for their business
 3. A professional Google review response template
 4. A customer follow-up message for after visits
 5. A full online presence audit, website, socials, reviews, local visibility
 
-What Forge AI does with AI beyond this free offer:
+What Forge AI does beyond this free offer:
 - Custom websites built and maintained with AI
+- Automated customer follow-up and retention systems (text and email sequences that bring past customers back at the right moments, seasonal check-ins, touch-ups, referral nudges). This is our strongest add-on for service businesses and appears as a soft callout below the free deliverables in the email.
 - Automated social media content and scheduling across all platforms
 - AI-powered Google review management and reputation building
-- Automated customer follow-up and retention systems
 - Local SEO and Google Business Profile optimization
 - AI chatbots for websites to capture and convert leads 24/7
 - Targeted ad campaign management
 - Full business automation, letting owners focus on running the business
-Hint at this scale once, do not list all of it. The point is to make them feel a serious, capable team is behind this, not a freelancer.
+Hint at this scale once in the body ("we also handle X, Y, Z if you ever want to scale"), do not list everything. Never mention pricing, never imply cost, never use words like "paid", "upgrade", "package", "tier", or "monthly". The soft callout below the body carries the idea visually, keep the body conversational.
 
 Email structure:
 1. Opening, something genuinely specific about this business. Their rating, reviews, or something real about them. Make it feel like Leif actually looked them up. Warm, human, not corporate.
 2. Leif introduces himself as the founder of Forge AI. Natural phrasing like "I'm Leif, I run Forge AI" or "I started Forge AI". One short sentence on what Forge AI does with AI for local businesses.
-3. Tell them the demo exists (without pasting the URL). Be clear: this demo is a starting point. The real site will be built around their actual style, colors, feel, and photos, and can look completely different.
+3. ${hasWebsite ? 'Describe what you noticed about their current website and the specific improvements you would make (faster load, cleaner modern look, added chatbot, better contact flow). Make it clear the redesign is free, they keep their domain, and you would walk through the detailed notes on the call. Do NOT mention a demo or anything to click.' : 'Tell them the demo exists (without pasting the URL). Be clear: this demo is a starting point. The real site will be built around their actual style, colors, feel, and photos, and can look completely different.'}
 4. List the 5 free things clearly so the value feels undeniable.
 5. The exchange: everything is free, all Leif asks in return is one quick 5-minute call. Fair trade, no-brainer.
 6. One line hinting that Forge AI can handle more if they ever want to scale.
@@ -141,9 +145,11 @@ class NoDemoError extends Error {
 }
 
 async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts, outreachType) {
-  // Refuse to send if there is no real demo to link to. This prevents the
-  // CTA button from opening the login page when the builder has not run yet.
-  if (!hasValidDemoUrl(previewUrl)) {
+  const hasWebsite = outreachType === 'has_website' || (!outreachType && !!lead.website);
+  // For no-website leads we need a real demo URL, otherwise the CTA button
+  // would open the login page. Has-website leads don't get a demo button at
+  // all (the pitch is "I'll redesign your current site"), so skip the guard.
+  if (!hasWebsite && !hasValidDemoUrl(previewUrl)) {
     throw new NoDemoError(`No demo site built for ${lead.name}. Run the Builder first so the email has a real demo to link to.`);
   }
   onProgress({ status: 'generating', message: `Generating samples for ${lead.name}...` });
@@ -170,27 +176,44 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
-  // CTA button target: use click-tracked URL when available, otherwise the raw preview URL.
-  const ctaUrl = trackingOpts?.clickUrl || previewUrl;
+  // Has-website leads get no CTA button (the pitch is "I'll redesign your
+  // current site", no demo to click). No-website leads get the demo button.
+  const ctaUrl = hasWebsite ? null : (trackingOpts?.clickUrl || previewUrl);
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
   const auditLine = lead.rating !== 'N/A'
-    ? `Website: ${lead.website ? 'Upgrade opportunity, current site is leaving conversions on the table.' : 'No site found, your demo shows what can be live within 24 hours.'} Google reviews: ${lead.rating}/5 with ${lead.reviews} reviews, strong social proof that deserves a proper web presence. Follow-up: most local businesses lose repeat customers simply by not following up, automation solves that.`
+    ? `Website: ${hasWebsite ? 'Current site has room to be faster, cleaner, and built to convert more of your traffic.' : 'No site found, your demo shows what can be live within 24 hours.'} Google reviews: ${lead.rating}/5 with ${lead.reviews} reviews, strong social proof that deserves a proper web presence. Follow-up: most local businesses lose repeat customers simply by not following up, automation solves that.`
     : `A short audit of your current online presence, walked through with you on the call.`;
 
-  const samplesHtml = samples ? renderSamples({ samples, demoUrl: ctaUrl, auditLine }) : '';
+  const samplesHtml = samples
+    ? renderSamples({ samples, demoUrl: ctaUrl || previewUrl, auditLine })
+    : '';
+
+  const checklist = hasWebsite
+    ? [
+        'A redesign of your current site, faster, cleaner, and modern, with added features like a chatbot and improved contact flow',
+        'A ready-to-post Instagram caption for your business',
+        'A professional Google review response template',
+        'A customer follow-up message template',
+        'A full online presence audit'
+      ]
+    : [
+        'Your live demo website, already built',
+        'A ready-to-post Instagram caption for your business',
+        'A professional Google review response template',
+        'A customer follow-up message template',
+        'A full online presence audit'
+      ];
 
   const html = renderOutreachHtml({
     bodyText: copy.body,
     ctaUrl,
     ctaLabel: 'View Your Demo Site',
-    checklist: [
-      'Your live demo website, already built',
-      'A ready-to-post Instagram caption for your business',
-      'A professional Google review response template',
-      'A customer follow-up message template',
-      'A full online presence audit'
-    ],
+    checklist,
+    premiumAddOn: {
+      title: 'One more thing worth mentioning',
+      body: "We also set up automated follow-up systems for local businesses, text and email sequences that bring past customers back at the right moments, seasonal check-ins, touch-ups, referral nudges. For a business like yours with strong reviews and repeat-work potential, it's where we see the biggest long-term ROI for owners. Happy to walk you through how it works on the call if you're curious."
+    },
     closingLine: 'All I ask in return is a 5-minute call so I can walk you through it. No pitch, no pressure.',
     samplesHtml,
     pixelHtml

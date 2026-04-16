@@ -75,6 +75,7 @@ function renderButton(href, label) {
  * @param {string} [opts.testBanner] - If set, shows a yellow "test email" banner at top.
  * @param {string} [opts.samplesHtml] - Optional pre-rendered HTML for the 5 deliverables block.
  * @param {string} [opts.pixelHtml] - Optional tracking pixel HTML.
+ * @param {object} [opts.premiumAddOn] - Optional paid add-on callout. { title, body }
  * @returns {string}
  */
 function renderOutreachHtml(opts) {
@@ -86,7 +87,8 @@ function renderOutreachHtml(opts) {
     closingLine,
     testBanner,
     samplesHtml = '',
-    pixelHtml = ''
+    pixelHtml = '',
+    premiumAddOn
   } = opts;
 
   const bodyHtml = paragraphsFrom(bodyText);
@@ -103,6 +105,17 @@ function renderOutreachHtml(opts) {
   const closingHtml = closingLine ? `
     <tr><td style="padding:20px 36px 0">
       <p style="margin:0;font-size:15px;line-height:1.7;color:#334155;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">${esc(closingLine)}</p>
+    </td></tr>` : '';
+
+  // Secondary callout block. Used to plant an idea worth talking about on
+  // the call, visually distinct from the free deliverables above but neutral
+  // in tone. No monetary signaling, the idea sells itself.
+  const premiumHtml = premiumAddOn ? `
+    <tr><td style="padding:14px 36px 6px">
+      <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:16px 18px">
+        <p style="margin:0 0 6px;font-size:14.5px;font-weight:700;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">${esc(premiumAddOn.title || '')}</p>
+        <p style="margin:0;font-size:13.5px;line-height:1.65;color:#475569;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">${esc(premiumAddOn.body || '')}</p>
+      </div>
     </td></tr>` : '';
 
   return `<!DOCTYPE html>
@@ -145,6 +158,8 @@ function renderOutreachHtml(opts) {
         <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#0f172a;letter-spacing:.04em;text-transform:uppercase">What you get, all free</p>
         ${checklistHtml}
       </td></tr>` : ''}
+
+      ${premiumHtml}
 
       ${closingHtml}
 

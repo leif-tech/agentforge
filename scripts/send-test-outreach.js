@@ -35,20 +35,29 @@ const TEMPLATES = {
     subjectTag: 'HAS WEBSITE',
     subject: 'Had an idea for your site',
     testBanner: 'This is what an email to a business that already has a website looks like.',
+    cta: false,
     body: [
       'Hey,',
       '',
-      "I took a look at your current website and noticed a few things I thought I could improve, so I mocked up a faster, cleaner version to show you what I had in mind.",
+      "I took a look at your current website and put together notes on a few things I'd change, faster load, cleaner layout, a more modern look, and a couple of features I'd add on top (a chatbot that can handle after-hours questions, a smoother way for visitors to get in touch).",
       '',
-      "I'm Leif, I run Forge AI. We help local businesses upgrade sites that feel dated, add AI chatbots that handle customer questions 24/7, and set up automated follow-ups so you're not losing repeat visits.",
+      "I'm Leif, I run Forge AI. We help local businesses turn sites that feel dated into ones that actually convert the traffic they already get, and I'd like to do that for you for free. You'd keep your domain, your content, and everything you already have, we'd just make the whole thing better.",
       '',
-      "The demo below is just a starting point. The real upgrade gets built around your brand, your photos, and the way your customers actually use the site today, so it can look completely different.",
-    ].join('\n')
+      "Happy to walk you through the notes on the call so you can see exactly what I'd change.",
+    ].join('\n'),
+    checklist: [
+      'A redesign of your current site, faster, cleaner, and modern, with added features like a chatbot and improved contact flow',
+      'A ready-to-post Instagram caption for your business',
+      'A professional Google review response template',
+      'A customer follow-up message template',
+      'A full online presence audit'
+    ]
   },
   no: {
     subjectTag: 'NO WEBSITE',
     subject: 'Built you a website',
     testBanner: 'This is what an email to a business that does not have a website yet looks like.',
+    cta: true,
     body: [
       'Hey,',
       '',
@@ -57,35 +66,40 @@ const TEMPLATES = {
       "I'm Leif, I run Forge AI. We build websites for local businesses using AI, which is why I could put this together for you for free before we'd even spoken.",
       '',
       "The demo below has your basic info, services, and a chatbot that can answer customer questions any time of day. It's a starting point, the real site gets built around your brand, your photos, and the way you actually want to show up online.",
-    ].join('\n')
+    ].join('\n'),
+    checklist: [
+      'Your live demo website, already built',
+      'A ready-to-post Instagram caption for your business',
+      'A professional Google review response template',
+      'A customer follow-up message template',
+      'A full online presence audit'
+    ]
   }
 };
-
-const CHECKLIST = [
-  'Your live demo website, already built',
-  'A ready-to-post Instagram caption for your business',
-  'A professional Google review response template',
-  'A customer follow-up message template',
-  'A full online presence audit'
-];
 
 async function sendOne(key) {
   const t = TEMPLATES[key];
   const html = renderOutreachHtml({
     bodyText: t.body,
-    ctaUrl: DEMO_URL,
+    ctaUrl: t.cta ? DEMO_URL : null,
     ctaLabel: 'View Your Demo Site',
-    checklist: CHECKLIST,
+    checklist: t.checklist,
+    premiumAddOn: {
+      title: 'One more thing worth mentioning',
+      body: "We also set up automated follow-up systems for local businesses, text and email sequences that bring past customers back at the right moments, seasonal check-ins, touch-ups, referral nudges. For a business like yours with strong reviews and repeat-work potential, it's where we see the biggest long-term ROI for owners. Happy to walk you through how it works on the call if you're curious."
+    },
     closingLine: 'All I ask in return is a 5-minute call so I can walk you through it. No pitch, no pressure.',
     testBanner: t.testBanner
   });
+
+  const textBody = t.cta ? (t.body + '\n\nView the demo: ' + DEMO_URL) : t.body;
 
   const result = await resend.emails.send({
     from: `Leif | Forge AI <${RESEND_FROM}>`,
     to: TO,
     replyTo: RESEND_FROM,
     subject: `[TEST - ${t.subjectTag}] ${t.subject}`,
-    text: t.body + '\n\nView the demo: ' + DEMO_URL,
+    text: textBody,
     html
   });
   console.log(`[${key}] id=${result?.data?.id || 'unknown'} error=${result?.error ? JSON.stringify(result.error) : 'none'}`);
