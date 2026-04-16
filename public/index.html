@@ -374,26 +374,33 @@ tr:hover td{background:rgba(0,229,255,.03)}
 .sframe{width:100%;height:400px;border:1px solid var(--b2);border-radius:7px;background:#fff}
 
 /* ── SETTINGS ── */
-.set-grid{flex:1;overflow-y:auto;padding:20px 20px 40px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}
-.scard{
-  background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:18px;
-  position:relative;overflow:hidden;
+.set-grid{
+  flex:1;overflow-y:auto;padding:24px 24px 48px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+  gap:18px;align-content:start;
 }
-.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--cyan),var(--violet));opacity:.4}
-.scard-t{font-size:12.5px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--t1)}
-.ss-badge{font-size:9px;padding:2px 8px;border-radius:20px;margin-left:auto;border:1px solid;font-family:var(--mono)}
+.scard{
+  background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:20px 20px 18px;
+  position:relative;
+  display:flex;flex-direction:column;
+  min-height:0;
+}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--cyan),var(--violet));opacity:.4;border-radius:10px 10px 0 0}
+.scard-t{font-size:12.5px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--t1);flex-wrap:wrap}
+.ss-badge{font-size:9px;padding:2px 8px;border-radius:20px;margin-left:auto;border:1px solid;font-family:var(--mono);white-space:nowrap}
 .ss-badge.on{border-color:rgba(0,255,136,.4);color:var(--green);background:rgba(0,255,136,.08)}
 .ss-badge.off{border-color:var(--b2);color:var(--t4)}
 .sbtn{
   background:linear-gradient(135deg,var(--cyan),var(--cyan2));
-  color:#060810;border:none;border-radius:7px;padding:8px 18px;
-  font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;
+  color:#060810;border:none;border-radius:7px;padding:10px 20px;
+  font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;
+  margin-top:auto;align-self:flex-start;
   transition:all .2s;box-shadow:0 0 15px rgba(0,229,255,.2);
 }
 .sbtn:hover{box-shadow:0 0 25px rgba(0,229,255,.4);transform:translateY(-1px)}
 .ibox{
   background:rgba(0,0,0,.3);border:1px solid var(--b1);border-radius:6px;
-  padding:10px 12px;margin:10px 0;font-size:10px;color:var(--t3);line-height:1.75;
+  padding:12px 14px;margin:10px 0 14px;font-size:10.5px;color:var(--t3);line-height:1.75;
 }
 .ibox a{color:var(--cyan);text-decoration:none}
 .ibox a:hover{text-decoration:underline}
