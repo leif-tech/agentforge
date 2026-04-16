@@ -478,7 +478,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
   border-bottom:1px solid rgba(255,77,109,.5);backdrop-filter:blur(8px)">
   <span style="font-size:16px">⚠️</span>
   <span style="font-size:12px;font-weight:700;color:#fff">
-    ANTHROPIC API KEY NOT SET — Builder, Outreach & Closer won't work.
+    ANTHROPIC API KEY NOT SET, Builder, Outreach & Closer won't work.
     Go to <span style="text-decoration:underline;cursor:pointer" onclick="go('settings')">Settings</span> and add your key from
     <a href="https://console.anthropic.com" target="_blank" style="color:#fff;font-weight:800">console.anthropic.com</a>
   </span>
@@ -494,7 +494,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
   border-bottom:1px solid rgba(255,179,0,.5);backdrop-filter:blur(8px)">
   <span style="font-size:16px">📧</span>
   <span style="font-size:12px;font-weight:700;color:#060810">
-    RESEND NOT CONFIGURED — Outreach emails will NOT send.
+    RESEND NOT CONFIGURED, Outreach emails will NOT send.
     Go to <span style="text-decoration:underline;cursor:pointer" onclick="go('settings')">Settings</span> and add your Resend API key + From email.
   </span>
   <button onclick="document.getElementById('resend-warn').style.display='none'"
@@ -647,7 +647,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     </div>
     <div class="ss">
       <div class="lbl">Hunter.io Credits <span style="font-weight:400;font-size:8px;color:var(--t3)">(fallback only)</span></div>
-      <div style="font-family:var(--mono);font-size:12px;color:var(--t3);margin-bottom:9px" id="ef-cred">—</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--t3);margin-bottom:9px" id="ef-cred">-</div>
     </div>
     <div class="gap"></div>
   </div>
@@ -744,13 +744,13 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="f"><span>Recipient Email</span><input type="email" id="o-email" placeholder="owner@business.com"></div>
       <div class="hint" id="o-hint" onclick="useEmail()">💡 Use found email: <span id="o-hint-v"></span></div>
       <div id="o-local-warn" style="display:none;font-size:10px;color:var(--amber);padding:7px 9px;border:1px solid rgba(255,179,0,.25);border-radius:5px;background:rgba(255,179,0,.05);margin-bottom:8px;line-height:1.6">
-        ⚠ This lead's preview URL is on localhost. Go to <strong>Settings → Cloudflare Pages</strong> and add your credentials — then rebuild this site to get a permanent public link.
+        ⚠ This lead's preview URL is on localhost. Go to <strong>Settings → Cloudflare Pages</strong> and add your credentials, then rebuild this site to get a permanent public link.
       </div>
       <div id="o-dup-warn" style="display:none;font-size:10px;color:var(--amber);padding:7px 9px;border:1px solid rgba(255,179,0,.25);border-radius:5px;background:rgba(255,179,0,.05);margin-bottom:8px;line-height:1.6">
         ⚠ Previously contacted <span id="o-dup-email" style="font-weight:700"></span> on <span id="o-dup-date"></span>. You can still send to a different email, or force resend below.
       </div>
       <div id="o-prev-box" style="display:none">
-        <div style="font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:5px">Email Preview — <span style="color:var(--cyan);font-weight:400;text-transform:none">editable before sending</span></div>
+        <div style="font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:5px">Email Preview, <span style="color:var(--cyan);font-weight:400;text-transform:none">editable before sending</span></div>
         <div class="ebox">
           <div class="f" style="margin-bottom:6px"><span>Subject</span><input type="text" id="o-subj" placeholder="Subject line..."></div>
           <div class="f"><span>Body</span><textarea id="o-email-body" style="min-height:420px;resize:vertical;font-size:12px;line-height:1.8" placeholder="Email body..."></textarea></div>
@@ -815,7 +815,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div class="ss">
       <div class="lbl">Objection Handler</div>
       <div class="f"><span>Select Lead</span>
-        <select id="c-lead"><option value="">— Select a lead —</option></select>
+        <select id="c-lead"><option value="">Select a lead</option></select>
       </div>
       <div class="f"><span>Their Reply</span><textarea id="c-reply" placeholder="Paste their email reply here..."></textarea></div>
       <button class="btn btn-main" id="c-btn" onclick="doClose()">▶ Generate Response</button>
@@ -910,7 +910,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       </div>
       <div class="f"><span>API Key</span><input type="password" id="set-ant" placeholder="sk-ant-api03-..."></div>
       <div class="ibox">
-        <strong>Cost:</strong> Uses Claude Haiku — cheapest model. ~$0.01/site. 5 full tests ≈ under $0.25 total.
+        <strong>Cost:</strong> Uses Claude Haiku, cheapest model. ~$0.01/site. 5 full tests ≈ under $0.25 total.
       </div>
       <button class="sbtn" onclick="saveSet('anthropic')" style="width:100%">Save API Key →</button>
     </div>
@@ -918,7 +918,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="scard-t">◈ Hunter.io Email Finder <span class="ss-badge off" id="ss-hu">Not Set</span></div>
       <div class="f"><span>API Key</span><input type="password" id="set-hunter" placeholder="xxxxxxxxxxxxxxxx"></div>
       <div class="ibox">
-        Free tier: 25 email searches/month — no credit card needed.<br>
+        Free tier: 25 email searches/month, no credit card needed.<br>
         Get yours → <a href="https://hunter.io" target="_blank">hunter.io</a> → API Keys section
       </div>
       <button class="sbtn" onclick="saveSet('hunter')">Save Key</button>
@@ -929,7 +929,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="f"><span>Password</span><input type="password" id="set-fb-pass" placeholder="••••••••"></div>
       <div class="ibox">
         Used to log into Facebook via headless browser and scrape business email from their pages.<br>
-        <strong>Tip:</strong> Use a secondary/burner FB account — automated login may trigger security checks.
+        <strong>Tip:</strong> Use a secondary/burner FB account, automated login may trigger security checks.
       </div>
       <button class="sbtn" onclick="saveSet('facebook')">Save Credentials</button>
     </div>
@@ -942,7 +942,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="f"><span>Account ID</span><input type="text" id="set-cf-id" placeholder="abc123def456..."></div>
       <div class="f"><span>API Token</span><input type="password" id="set-cf-token" placeholder="your-cloudflare-api-token"></div>
       <div class="ibox">
-        Demo sites deploy to <strong style="color:var(--cyan)">yoursite.pages.dev</strong> — permanent links that work even when AgentForge is off.<br><br>
+        Demo sites deploy to <strong style="color:var(--cyan)">yoursite.pages.dev</strong>, permanent links that work even when AgentForge is off.<br><br>
         <strong>Setup (free):</strong><br>
         1. <a href="https://dash.cloudflare.com" target="_blank" style="color:var(--cyan)">dash.cloudflare.com</a> → copy your <strong>Account ID</strong> from the right sidebar<br>
         2. My Profile → API Tokens → Create Token → use <strong>"Edit Cloudflare Workers"</strong> template → add <strong>Cloudflare Pages</strong> permission → Create
@@ -1008,7 +1008,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
 <!-- NOTES MODAL -->
 <div class="ov" id="notes-ov">
   <div class="modal" style="width:500px">
-    <div class="modal-t">Notes — <span id="notes-name"></span></div>
+    <div class="modal-t">Notes, <span id="notes-name"></span></div>
     <button class="modal-x" onclick="saveNotes()">✕</button>
     <textarea id="notes-text" style="width:100%;min-height:200px;resize:vertical" placeholder="Add notes about this lead..."></textarea>
     <button class="btn btn-main" style="margin-top:10px" onclick="saveNotes()">Save Notes</button>
@@ -1143,7 +1143,7 @@ async function checkCfg(){
     setSS('ss-cf',s.hasCloudflare);
     setSS('ss-fb',s.hasFacebook);
     setSS('ss-brevo',s.hasBrevo);
-    const saved='✓ Already saved — leave blank to keep';
+    const saved='✓ Already saved, leave blank to keep';
     setSavedPlaceholder('set-ant', s.hasAnthropicKey, saved);
     setSavedPlaceholder('set-hunter', s.hasHunter, saved);
     setSavedPlaceholder('set-fb-email', s.hasFacebook, saved);
@@ -1233,7 +1233,7 @@ function onSSE(d){
   if(d.type==='scout_done'){bar('s-pb',100);setTimeout(()=>bar('s-pb',0),2500);btn('scout-btn','▶ Run Scout Agent',false);document.getElementById('scan-anim').style.display='none';log('s-feed','✓ Scout complete.','gr');loadLeads().then(()=>{drawB();drawEF();});}
   if(d.type==='emailfinder')log('ef-feed',d.message,d.status==='found'?'gr':d.status==='error'?'er':'');
   if(d.type==='emailfinder_done'){if(d.email&&d.leadId){const l=findLeadLocal(d.leadId);if(l){l.foundEmail=d.email;l.emailConfidence=d.confidence;}drawEF();drawScout();updStats();}}
-  if(d.type==='emailfinder_batch_done'){log('ef-feed',`✓ Done — ${d.found}/${d.total} emails found`,'gr');btn('ef-btn','▶ Find Emails',false);bar('ef-pb',0);loadCreds();}
+  if(d.type==='emailfinder_batch_done'){log('ef-feed',`✓ Done, ${d.found}/${d.total} emails found`,'gr');btn('ef-btn','▶ Find Emails',false);bar('ef-pb',0);loadCreds();}
   if(d.type==='builder')log('b-feed',d.message,d.status==='done'?'gr':d.status==='retry'?'wn':d.status==='error'?'er':'');
   if(d.type==='builder_done'){if(d.leadId){const l=findLeadLocal(d.leadId);if(l){l.siteFile=d.filename;l.previewUrl=d.previewUrl;l.status='Site Built';}drawB();updStats();}}
   if(d.type==='builder_batch_done'){btn('b-btn','▶ Build Selected',false);bar('b-pb',100);setTimeout(()=>bar('b-pb',0),2000);log('b-feed','✓ All builds complete','gr');}
@@ -1306,9 +1306,9 @@ function drawScout(){
     <td style="color:var(--t4);font-family:var(--mono);font-size:9.5px">${i+1}</td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td class="ph ${!l.phone||l.phone==='N/A'?'na':''}">${x(l.phone||'N/A')}</td>
-    <td style="font-size:11px;color:var(--amber)">${l.rating!=='N/A'?'★ '+l.rating+' <span style="color:var(--t3);font-size:9px">('+l.reviews+')</span>':'—'}</td>
+    <td style="font-size:11px;color:var(--amber)">${l.rating!=='N/A'?'★ '+l.rating+' <span style="color:var(--t3);font-size:9px">('+l.reviews+')</span>':'-'}</td>
     <td>${l.website?'<span class="badge" style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);color:#ff6b85;font-size:8.5px;padding:2px 7px;border-radius:10px">Has Site</span>':'<span class="badge" style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--green);font-size:8.5px;padding:2px 7px;border-radius:10px">No Site</span>'}</td>
-    <td>${l.foundEmail?`<span class="badge b-em">${x(l.foundEmail)}</span>`:'<span style="color:var(--t4);font-size:10px">—</span>'}</td>
+    <td>${l.foundEmail?`<span class="badge b-em">${x(l.foundEmail)}</span>`:'<span style="color:var(--t4);font-size:10px">-</span>'}</td>
     <td><span class="badge b-type">${x(l.type||'').replace(/_/g,' ')}</span></td>
     <td>${scoreBadge(l.score)}</td>
     <td>${sb(l.status||'New')}</td>
@@ -1385,7 +1385,7 @@ function drawEF(){
     <td><div class="ln">${x(l.name)}</div></td>
     <td><div class="la">${x(l.address)}</div></td>
     <td>${l.foundEmail?`<span class="badge b-em">${x(l.foundEmail)}</span>`:'<span style="color:var(--t4);font-size:10px">Not found</span>'}</td>
-    <td style="font-family:var(--mono);font-size:10px;color:var(--t3)">${l.emailConfidence?l.emailConfidence+'%':'—'}</td>
+    <td style="font-family:var(--mono);font-size:10px;color:var(--t3)">${l.emailConfidence?l.emailConfidence+'%':'-'}</td>
     <td><button class="ab" onclick="efOne('${l.id}')">Search</button> <button class="ab" onclick="efHunter('${l.id}')" style="font-size:8px;opacity:.7">Hunter</button></td>
   </tr>`).join('');
   }
@@ -1426,7 +1426,7 @@ function drawB(){
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td><span class="badge b-type">${x(l.type||'').replace(/_/g,' ')}</span></td>
     <td>${sb(l.status||'New')}</td>
-    <td>${l.previewUrl?`<button class="ab" onclick="prevSite('${l.id}')">Preview ↗</button>`:'<span style="color:var(--t4);font-size:10px">—</span>'}</td>
+    <td>${l.previewUrl?`<button class="ab" onclick="prevSite('${l.id}')">Preview ↗</button>`:'<span style="color:var(--t4);font-size:10px">-</span>'}</td>
     <td><button class="ab" onclick="buildOne('${l.id}')">Build</button></td>
   </tr>`).join('');
   }
@@ -1450,7 +1450,7 @@ function prevSite(id){
   const localUrl=l.siteFile?`/sites/${l.siteFile}`:'';
   const publicUrl=l.previewUrl&&!l.previewUrl.includes('ngrok')&&!l.previewUrl.includes('localhost')?l.previewUrl:'';
   const iframeSrc=publicUrl||localUrl;
-  document.getElementById('site-name').textContent=l.name+' — '+(publicUrl.includes('pages.dev')?`☁️ ${publicUrl}`:l.address);
+  document.getElementById('site-name').textContent=l.name+', '+(publicUrl.includes('pages.dev')?`☁️ ${publicUrl}`:l.address);
   document.getElementById('sframe').src=iframeSrc;
   document.getElementById('site-link').href=publicUrl||localUrl;
   document.getElementById('site-ov').classList.add('on');
@@ -1463,7 +1463,7 @@ function goOutreach(){closeOv('site-ov');go('outreach');if(siteLead!=null){pickL
 function fillSels(){
   const o=document.getElementById('o-lead'),c=document.getElementById('c-lead'),cc=c.value;
   const opts=leads.map(l=>`<option value="${l.id}">${l.name}${l.siteFile?' ✓':''}</option>`).join('');
-  c.innerHTML='<option value="">— Select a lead —</option>'+opts;
+  c.innerHTML='<option value="">Select a lead</option>'+opts;
   if(cc)c.value=cc;
   renderLeadDrop();
 }
@@ -1601,16 +1601,16 @@ function drawOut(){
   e.style.display='none';t.style.display='table';
   document.getElementById('o-tbl-body').innerHTML=sent.map((l,i)=>{
     const tr=getLeadTracking(l.id);
-    const trackHtml=(tr.opens||tr.clicks)?`${tr.opens?`<span class="ti ti-open">👁 ${tr.opens}</span> `:''}${tr.clicks?`<span class="ti ti-click">🔗 ${tr.clicks}</span>`:''}`:'<span style="color:var(--t4);font-size:9px">—</span>';
+    const trackHtml=(tr.opens||tr.clicks)?`${tr.opens?`<span class="ti ti-open">👁 ${tr.opens}</span> `:''}${tr.clicks?`<span class="ti ti-click">🔗 ${tr.clicks}</span>`:''}`:'<span style="color:var(--t4);font-size:9px">-</span>';
     return `<tr>
     <td><input type="checkbox" class="o-cb" value="${l.id}"${oSel.has(l.id)?' checked':''} onchange="oSelUpd()"></td>
     <td style="color:var(--t4);font-family:var(--mono);font-size:9.5px">${i+1}</td>
     <td><div class="ln">${x(l.name)}</div><div class="la">${x(l.address)}</div></td>
     <td style="font-family:var(--mono);font-size:10.5px;color:var(--t2)">${x(l.outreachEmail||'')}</td>
-    <td>${l.previewUrl?`<a href="${l.previewUrl}" target="_blank" class="ab" style="text-decoration:none;display:inline-block">View ↗</a>`:'—'}</td>
+    <td>${l.previewUrl?`<a href="${l.previewUrl}" target="_blank" class="ab" style="text-decoration:none;display:inline-block">View ↗</a>`:'-'}</td>
     <td style="font-family:var(--mono);font-size:9.5px;color:var(--t3)">${l.outreachSentAt?new Date(l.outreachSentAt).toLocaleString():''}</td>
     <td>${trackHtml}</td>
-    <td>${tr.followUps?`<span style="background:rgba(251,191,36,.15);color:#fbbf24;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600">${tr.followUps}x sent</span>`:'<span style="color:var(--t4);font-size:9px">—</span>'}</td>
+    <td>${tr.followUps?`<span style="background:rgba(251,191,36,.15);color:#fbbf24;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600">${tr.followUps}x sent</span>`:'<span style="color:var(--t4);font-size:9px">-</span>'}</td>
     <td>${sb(l.status||'Sent')}</td>
   </tr>`;}).join('');
 }
@@ -1796,7 +1796,7 @@ drawOut     = rafBatch(_drawOutImpl);
 drawPipeline= rafBatch(_drawPipelineImpl);
 renderLeadDrop = rafBatch(_renderLeadDropImpl);
 
-// Memoized stats — avoid recomputing counts on unchanged leads.
+// Memoized stats, avoid recomputing counts on unchanged leads.
 let _statsKey='';
 function _memoStats(){
   const key=leads.length+'|'+leads.reduce((a,l)=>a+(l.foundEmail?1:0)*2+(l.siteFile?1:0)*4+(l.website?1:0)*8+(l.phone&&l.phone!=='N/A'?1:0),0);

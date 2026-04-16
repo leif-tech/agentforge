@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
-// Persistent data directory — set DATA_DIR env var on Railway to your volume mount path (e.g. /data)
+// Persistent data directory, set DATA_DIR env var on Railway to your volume mount path (e.g. /data)
 const DATA_ROOT = process.env.DATA_DIR || __dirname;
 const leadsEnv = path.join(DATA_ROOT, 'leads', '.env');
 const localEnv = path.join(__dirname, '.env');
@@ -52,7 +52,7 @@ app.get('/login', (req, res) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>AgentForge — Login</title>
+<title>AgentForge, Login</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23060810'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='13' fill='%2300e5ff'>AF</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -138,7 +138,7 @@ fs.mkdirSync(DATA,{recursive:true});
     console.log(`[migrate] Moving ${oldPath} → ${newPath}`);
     fs.renameSync(oldPath, newPath);
   } else if (fs.existsSync(oldPath) && fs.existsSync(newPath)) {
-    // Both exist — keep the larger file (more data)
+    // Both exist, keep the larger file (more data)
     const oldSize = fs.statSync(oldPath).size;
     const newSize = fs.statSync(newPath).size;
     if (oldSize > newSize) {
@@ -160,7 +160,7 @@ const save = (f,d) => {
   fs.writeFileSync(tmp, JSON.stringify(d,null,2));
   fs.renameSync(tmp, f);
 };
-// Coalesce frequent writes (tracking pixel, click redirects) — one disk write per ~2s per file.
+// Coalesce frequent writes (tracking pixel, click redirects), one disk write per ~2s per file.
 const _saveTimers = new Map();
 const saveDebounced = (f, d, ms = 2000) => {
   const existing = _saveTimers.get(f);
@@ -242,7 +242,7 @@ function isValidEmail(email) {
   return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
 }
 
-// ── TRACKING ROUTES (before auth — email clients need access) ────────────
+// ── TRACKING ROUTES (before auth, email clients need access) ────────────
 const PIXEL_BUF = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
 app.get('/t/:trackingId.png', (req, res) => {
@@ -277,6 +277,28 @@ app.get('/blog/:slug', (req, res) => {
   res.status(404).send('Not found');
 });
 
+// Landing-page contact form (public, no auth).
+const CF = path.join(DATA,'contacts.json');
+let contacts = load(CF);
+app.post('/api/contact', (req, res) => {
+  const { name, business, type, email } = req.body || {};
+  if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
+  if (!isValidEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
+  const record = {
+    id: randomUUID(),
+    name: String(name).slice(0,200),
+    business: String(business||'').slice(0,200),
+    type: String(type||'').slice(0,200),
+    email: String(email).slice(0,200),
+    submittedAt: new Date().toISOString(),
+    ip: req.ip || req.connection?.remoteAddress || ''
+  };
+  contacts.push(record);
+  save(CF, contacts);
+  console.log(`[contact] ${record.name} | ${record.business} | ${record.type} | ${record.email}`);
+  res.json({ ok: true });
+});
+
 // ── LANDING PAGE (public, SEO-crawlable homepage for non-authed visitors) ─
 app.get('/', (req, res, next) => {
   if (req.session.auth) return next();
@@ -297,7 +319,7 @@ app.use(express.static(path.join(__dirname,'public'), {
       res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
       res.setHeader('Pragma','no-cache');
     } else if (/\.(?:js|css|woff2?|ttf|otf|svg|png|jpg|jpeg|gif|webp|ico)$/i.test(p)) {
-      // Static assets — allow the browser to revalidate cheaply via ETag.
+      // Static assets, allow the browser to revalidate cheaply via ETag.
       res.setHeader('Cache-Control','public, max-age=86400, stale-while-revalidate=604800');
     }
   }
@@ -399,7 +421,7 @@ app.post('/api/emailfinder/find-batch', async (req,res) => {
     await new Promise(r=>setTimeout(r,600));
   }
   emit(sessionId, { type:'emailfinder_batch_done', found, total:ids.length });
-  emit(sessionId, { type:'emailfinder', status:'complete', message:`🏁 Done — ${found}/${ids.length} emails found` });
+  emit(sessionId, { type:'emailfinder', status:'complete', message:`🏁 Done, ${found}/${ids.length} emails found` });
 });
 
 app.post('/api/emailfinder/hunter', async (req,res) => {
@@ -451,12 +473,12 @@ app.post('/api/builder/build', async (req,res) => {
       try {
         previewUrl = await cfDeploy(lead.name, html, p => emit(sessionId,{ type:'builder',...p }));
       } catch(cfErr) {
-        emit(sessionId, { type:'builder', status:'warn', message:`⚠️  Cloudflare deploy failed: ${cfErr.message} — using local URL` });
+        emit(sessionId, { type:'builder', status:'warn', message:`⚠️  Cloudflare deploy failed: ${cfErr.message}, using local URL` });
       }
     }
     leads[index] = { ...leads[index], siteFile:filename, previewUrl, status:'Site Built' };
     save(LF,leads);
-    emit(sessionId, { type:'builder', status:'done', message:`✅ ${lead.name} — site live! ${previewUrl}` });
+    emit(sessionId, { type:'builder', status:'done', message:`✅ ${lead.name}, site live! ${previewUrl}` });
     emit(sessionId, { type:'builder_done', leadId:id, filename, previewUrl });
   } catch(e) {
     emit(sessionId, { type:'builder', status:'error', message:`❌ Failed: ${e.message}` });
@@ -482,7 +504,7 @@ app.post('/api/builder/build-batch', async (req,res) => {
         try {
           previewUrl = await cfDeploy(lead.name, html, p => emit(sessionId,{ type:'builder',...p }));
         } catch(cfErr) {
-          emit(sessionId, { type:'builder', status:'warn', message:`⚠️  Cloudflare deploy failed: ${cfErr.message} — using local URL` });
+          emit(sessionId, { type:'builder', status:'warn', message:`⚠️  Cloudflare deploy failed: ${cfErr.message}, using local URL` });
         }
       }
       leads[index] = { ...leads[index], siteFile:filename, previewUrl, status:'Site Built' };
@@ -496,7 +518,7 @@ app.post('/api/builder/build-batch', async (req,res) => {
     await new Promise(r=>setTimeout(r,800));
   }
   emit(sessionId, { type:'builder_batch_done', built, total:ids.length });
-  emit(sessionId, { type:'builder', status:'complete', message:`🏁 Done — ${built}/${ids.length} sites built` });
+  emit(sessionId, { type:'builder', status:'complete', message:`🏁 Done, ${built}/${ids.length} sites built` });
 });
 
 // ── OUTREACH ──────────────────────────────────────────────────────────────
@@ -527,7 +549,7 @@ app.post('/api/outreach/send', async (req,res) => {
   res.json({ status:'started' });
   emit(sessionId, { type:'outreach', status:'start', message:`📧 Preparing email for ${lead.name}...` });
   try {
-    // No tracking pixel or click redirect on initial outreach — direct URLs only
+    // No tracking pixel or click redirect on initial outreach, direct URLs only
     const previewUrl = lead.previewUrl||getBase();
     const trackingOpts = {};
 
@@ -578,7 +600,7 @@ app.post('/api/outreach/batch', async (req,res) => {
         failed++;
         continue;
       }
-      // No tracking pixel or click redirect on initial outreach — direct URLs only
+      // No tracking pixel or click redirect on initial outreach, direct URLs only
       const previewUrl = lead.previewUrl||getBase();
       const trackingOpts = {};
       const autoType = lead.website ? 'has_website' : 'no_website';
@@ -609,7 +631,7 @@ app.post('/api/outreach/batch', async (req,res) => {
   }
   batchOutreachRunning = false;
   emit(sessionId, { type:'outreach_batch_done', sent, failed, total:targets.length });
-  emit(sessionId, { type:'outreach_batch', status:'complete', message:`🏁 Batch done — ${sent} sent, ${failed} failed` });
+  emit(sessionId, { type:'outreach_batch', status:'complete', message:`🏁 Batch done, ${sent} sent, ${failed} failed` });
 });
 
 // ── BATCH FOLLOW-UP ──────────────────────────────────────────────────────
@@ -664,7 +686,7 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
     await new Promise(r=>setTimeout(r,delay));
   }
   emit(sessionId, { type:'followup_batch_done', sent, failed, total:targets.length });
-  emit(sessionId, { type:'followup_batch', status:'complete', message:`🏁 Follow-ups done — ${sent} sent, ${failed} failed` });
+  emit(sessionId, { type:'followup_batch', status:'complete', message:`🏁 Follow-ups done, ${sent} sent, ${failed} failed` });
 });
 
 // ── SEND SCHEDULING ───────────────────────────────────────────────────────
@@ -697,7 +719,7 @@ app.post('/api/scheduled/process', async (req,res) => {
     const f = findLead(s.leadId);
     if (!f) { s.status='cancelled'; continue; }
     try {
-      // No tracking on scheduled initial sends — direct URLs only
+      // No tracking on scheduled initial sends, direct URLs only
       const previewUrl = f.lead.previewUrl||getBase();
       const trackingOpts = {};
       const autoType = f.lead.website ? 'has_website' : 'no_website';
@@ -760,7 +782,7 @@ app.post('/api/sequences/process', async (req,res) => {
   let sent = 0;
   for (const seq of sequences) {
     if (seq.status !== 'active') continue;
-    // Check if lead has replied — auto-cancel
+    // Check if lead has replied, auto-cancel
     const hasReply = replies.find(r => r.leadId === seq.leadId);
     if (hasReply) { seq.status = 'cancelled'; continue; }
     const f = findLead(seq.leadId);
@@ -818,7 +840,7 @@ app.post('/api/closer/handle', async (req,res) => {
     // Auto-cancel any active sequence for this lead
     sequences.forEach(s => { if (s.leadId===id && s.status==='active') s.status='cancelled'; });
     save(SEQ_F, sequences);
-    emit(sessionId, { type:'closer', status:'done', message:`✅ Response ready — ${response.objectionType} (${response.sentiment})` });
+    emit(sessionId, { type:'closer', status:'done', message:`✅ Response ready, ${response.objectionType} (${response.sentiment})` });
     emit(sessionId, { type:'closer_done', leadId:id, response });
   } catch(e) {
     emit(sessionId, { type:'closer', status:'error', message:`❌ Failed: ${e.message}` });
@@ -999,7 +1021,7 @@ app.post('/api/social/find-batch', async (req, res) => {
     await new Promise(r => setTimeout(r, 500));
   }
   emit(sessionId, { type: 'social_batch_done', found, total: ids.length });
-  emit(sessionId, { type: 'social', status: 'complete', message: `🏁 Done — ${found}/${ids.length} leads have social profiles` });
+  emit(sessionId, { type: 'social', status: 'complete', message: `🏁 Done, ${found}/${ids.length} leads have social profiles` });
 });
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────
@@ -1084,12 +1106,12 @@ app.listen(PORT, () => {
   console.log(`  Google Places : ${process.env.GOOGLE_PLACES_API_KEY?'✓ Ready':'✗ Missing'}`);
   console.log(`  Anthropic     : ${process.env.ANTHROPIC_API_KEY&&process.env.ANTHROPIC_API_KEY!=='your_anthropic_key_here'?'✓ Ready':'✗ Add in Settings'}`);
   console.log(`  Hunter.io     : ${process.env.HUNTER_API_KEY?'✓ Ready':'✗ Add in Settings'}`);
-  console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+') — 100/day':'✗ Add in Settings'}`);
-  console.log(`  Brevo Fallback: ${process.env.BREVO_API_KEY?'✓ Ready — 300/day, kicks in after Resend limit':'✗ Not configured — add via Settings page'}`);
-  console.log(`  SMTP Fallback : ${process.env.SMTP_HOST&&process.env.SMTP_USER?'✓ Ready ('+process.env.SMTP_USER+') — last resort':'✗ Not configured'}`);
-  console.log(`  Cloudflare    : ${process.env.CLOUDFLARE_ACCOUNT_ID&&process.env.CLOUDFLARE_API_TOKEN?'✓ Ready — sites deploy to pages.dev':'✗ Add in Settings (required for permanent URLs)'}\n`);
+  console.log(`  Resend Email  : ${process.env.RESEND_API_KEY&&process.env.RESEND_FROM?'✓ Ready ('+process.env.RESEND_FROM+'), 100/day':'✗ Add in Settings'}`);
+  console.log(`  Brevo Fallback: ${process.env.BREVO_API_KEY?'✓ Ready, 300/day, kicks in after Resend limit':'✗ Not configured, add via Settings page'}`);
+  console.log(`  SMTP Fallback : ${process.env.SMTP_HOST&&process.env.SMTP_USER?'✓ Ready ('+process.env.SMTP_USER+'), last resort':'✗ Not configured'}`);
+  console.log(`  Cloudflare    : ${process.env.CLOUDFLARE_ACCOUNT_ID&&process.env.CLOUDFLARE_API_TOKEN?'✓ Ready, sites deploy to pages.dev':'✗ Add in Settings (required for permanent URLs)'}\n`);
   if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
-    console.log(`  ⚠️  WARNING: Resend not configured — outreach emails will fail!`);
+    console.log(`  ⚠️  WARNING: Resend not configured, outreach emails will fail!`);
     console.log(`     Set RESEND_API_KEY and RESEND_FROM in .env or via Settings.\n`);
   }
 });
