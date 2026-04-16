@@ -1,4 +1,5 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const { renderOutreachHtml, renderSamples, stripUrls } = require('./email-template');
 
 function getClient() {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -13,23 +14,29 @@ function parseJSON(text) {
   return null;
 }
 
-function buildEmailPrompt(lead, previewUrl, type) {
+function buildEmailPrompt(lead, previewUrl, type, outreachType) {
+  const hasWebsite = outreachType === 'has_website' || (!outreachType && lead.website);
+  const angleLine = hasWebsite
+    ? `They already have a website. Your angle is an upgrade: their current site feels dated or is leaving money on the table, and you mocked up a faster, cleaner, more modern version to show what a better one looks like.`
+    : `They do not have a website yet. Your angle is building from scratch: you noticed they are missing an online presence despite strong reviews, and you went ahead and built them a real demo site so they can see what showing up online could look like.`;
+
   return `Write a cold outreach email from Leif to the owner of "${lead.name}", a ${type} at ${lead.address}.
 Google rating: ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews' : 'not yet rated'}.
 
-Leif is the founder of WebForge. He runs the company. He personally found this business, built them something real, and is reaching out as the person behind it - not a company blasting mass emails, not an employee.
+${angleLine}
 
-What Leif already built for them (for free):
-- A fully custom demo website, live right now at: ${previewUrl}
+Leif is the founder of Forge AI. He runs the company. He personally found this business, built them something real, and is reaching out as the person behind it, not a company blasting mass emails, not an employee.
 
-What Leif is handing over completely free:
-1. The live demo website (already built): ${previewUrl}
+CRITICAL: Do NOT include any URL, link, or phrase like "here:" or "live at:" in the body. The recipient will see a prominent "View Your Demo Site" button immediately below your message that takes them to the demo. Refer to the demo naturally in the body ("I built you a demo", "the demo below", "the link below") but never paste a URL.
+
+What Leif is handing over, completely free:
+1. The live demo website (already built, revealed via the button)
 2. A ready-to-post Instagram caption written for their business
 3. A professional Google review response template
 4. A customer follow-up message for after visits
-5. A full online presence audit - website, socials, reviews, local visibility
+5. A full online presence audit, website, socials, reviews, local visibility
 
-What WebForge does with AI (beyond this free offer):
+What Forge AI does with AI beyond this free offer:
 - Custom websites built and maintained with AI
 - Automated social media content and scheduling across all platforms
 - AI-powered Google review management and reputation building
@@ -37,36 +44,31 @@ What WebForge does with AI (beyond this free offer):
 - Local SEO and Google Business Profile optimization
 - AI chatbots for websites to capture and convert leads 24/7
 - Targeted ad campaign management
-- Full business automation - letting owners focus on running the business
-The point is to make them feel like there is a serious, capable team behind this - not just a freelancer. But do not pitch everything. Just give them a real sense of scale.
+- Full business automation, letting owners focus on running the business
+Hint at this scale once, do not list all of it. The point is to make them feel a serious, capable team is behind this, not a freelancer.
 
 Email structure:
-1. Opening - something genuinely specific about this business. Their rating, reviews, or something real about them. Make it feel like Leif actually looked them up. Warm, human, not corporate.
-2. Leif introduces himself as the founder of WebForge - not "I work with WebForge" or "I'm part of WebForge". He started it. Use natural phrasing like "I'm Leif - I started WebForge" or "I run WebForge". Then one sentence on what WebForge does with AI for local businesses. Personal, not a company pitch.
-3. Tell them about the demo site - include the actual URL ${previewUrl} so they can click it. Be clear: this is just a demo to show what is possible. The real site they get will be fully built around what they actually want - their style, colors, feel, everything. It can look completely different. The demo is just a taste.
+1. Opening, something genuinely specific about this business. Their rating, reviews, or something real about them. Make it feel like Leif actually looked them up. Warm, human, not corporate.
+2. Leif introduces himself as the founder of Forge AI. Natural phrasing like "I'm Leif, I run Forge AI" or "I started Forge AI". One short sentence on what Forge AI does with AI for local businesses.
+3. Tell them the demo exists (without pasting the URL). Be clear: this demo is a starting point. The real site will be built around their actual style, colors, feel, and photos, and can look completely different.
 4. List the 5 free things clearly so the value feels undeniable.
-5. The exchange - honest and direct: everything is free, and all Leif asks in return is one quick 15-minute call. Fair trade. No-brainer.
-6. One line about everything else WebForge can handle with AI if they want to scale - make it feel like there is a lot more available.
-7. Sign off as Leif, WebForge - personal, confident, not corporate.
-
-The goal of this email is to make saying NO feel stupid. The offer must be so obviously one-sided in their favor that ignoring it would feel like leaving real money and real value on the table for no reason. The ask is tiny - 15 minutes - and the value being handed over is massive and already done. That contrast must land hard.
+5. The exchange: everything is free, all Leif asks in return is one quick 5-minute call. Fair trade, no-brainer.
+6. One line hinting that Forge AI can handle more if they ever want to scale.
+7. Sign off simply: Leif.
 
 Rules:
 - Sound like a real founder who genuinely did the work before asking for anything
-- Leif must introduce himself as the person who runs/founded WebForge - never as someone who works there
-- The tone is confident and generous - not desperate, not salesy, not begging
-- Make the value feel undeniable - a real website is already live, real deliverables are ready, and it costs them nothing
-- The ask (15-minute call) must feel laughably small compared to what they are getting
+- Leif is the founder of Forge AI, never "I work with Forge AI" or "I'm part of Forge AI"
+- Confident and generous tone, not desperate, not salesy, not begging
+- The ask (5-minute call) must feel laughably small compared to the value
 - The reader should finish the email thinking "why would I say no to this"
-- Create a subtle sense that this offer will not sit around forever - Leif is busy, this is a specific offer for them
-- The demo URL must be visible and clickable in the body
-- Make it clear the demo is just the starting point - the real site will be built exactly around what they want
 - Short paragraphs, punchy, easy to read on a phone
-- Under 220 words for the main body
+- Under 200 words for the main body
 - No pricing anywhere
 - No corporate language or buzzwords
-- Subject line: short (under 9 words), sounds like a real person texting not a marketer emailing, creates a "wait, what?" reaction - ideally references something they built or did for this specific business. Examples of the right tone: "I built something for you", "took a look at your place", "made this for [Business Name]", "had an idea about [Business Name]". Never use exclamation marks, never sound like a newsletter, never use words like "partnership", "opportunity", "grow", or "free"
-- Sign off: Leif, WebForge
+- Absolutely no URLs, link text, or "here:" phrases anywhere in the body
+- Subject line: short (under 9 words), sounds like a real person texting not a marketer emailing, creates a "wait, what?" reaction. Examples: "I built something for you", "took a look at your place", "made this for [Business Name]", "had an idea about [Business Name]". Never use exclamation marks, never sound like a newsletter, never use words like "partnership", "opportunity", "grow", or "free"
+- Sign off: just "Leif" on its own line
 
 Return ONLY valid JSON with no extra text:
 {"subject":"...","body":"..."}`;
@@ -98,24 +100,26 @@ Return ONLY valid JSON:
   return result;
 }
 
-async function generateEmailCopy(lead, previewUrl) {
+async function generateEmailCopy(lead, previewUrl, outreachType) {
   const client = getClient();
   const type = (lead.type || 'business').replace(/_/g, ' ');
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1000,
-    messages: [{ role: 'user', content: buildEmailPrompt(lead, previewUrl, type) }]
+    messages: [{ role: 'user', content: buildEmailPrompt(lead, previewUrl, type, outreachType) }]
   });
   const result = parseJSON(msg.content[0].text);
   if (!result?.subject || !result?.body) throw new Error('Failed to generate email. Try again.');
+  // Safety net: if Claude ignored the no-URL rule, strip any URLs it slipped in.
+  result.body = stripUrls(result.body);
   return result;
 }
 
-async function generateEmailPreview(lead, previewUrl) {
-  return generateEmailCopy(lead, previewUrl);
+async function generateEmailPreview(lead, previewUrl, outreachType) {
+  return generateEmailCopy(lead, previewUrl, outreachType);
 }
 
-async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts) {
+async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts, outreachType) {
   onProgress({ status: 'generating', message: `Generating samples for ${lead.name}...` });
 
   let samples;
@@ -128,8 +132,8 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
   }
 
   const copy = (subjectOverride && bodyOverride)
-    ? { subject: subjectOverride, body: bodyOverride }
-    : await generateEmailCopy(lead, previewUrl);
+    ? { subject: subjectOverride, body: stripUrls(bodyOverride) }
+    : await generateEmailCopy(lead, previewUrl, outreachType);
 
   const { RESEND_API_KEY, RESEND_FROM } = process.env;
   if (!RESEND_API_KEY) throw new Error('Resend API key not configured. Go to Settings.');
@@ -140,72 +144,39 @@ async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectO
 
   onProgress({ status: 'sending', message: `Sending to ${emailAddress}...` });
 
-  // Determine URLs for links - use click tracking if available
-  const linkUrl = trackingOpts?.clickUrl || previewUrl;
-
-  let samplesHtml = '';
-  if (samples) {
-    samplesHtml = `
-      <hr style="border:none;border-top:1px solid #e8e8e8;margin:28px 0">
-      <p style="font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 4px">Your 5 Free Deliverables</p>
-      <p style="font-size:11.5px;color:#999;margin:0 0 22px">Ready to use - no editing needed.</p>
-
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">01 - Custom Demo Website</p>
-      <a href="${linkUrl}" style="font-size:12.5px;color:#4f46e5;word-break:break-all;display:block;margin-bottom:20px">${previewUrl}</a>
-
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">02 - Instagram Caption</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.instagram_post || ''}</div>
-
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">03 - Google Review Response</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.review_response || ''}</div>
-
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">04 - Customer Follow-Up Message</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75;margin-bottom:20px">${samples.followup_message || ''}</div>
-
-      <p style="font-size:10.5px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px">05 - Online Presence Audit</p>
-      <div style="background:#fafafa;border:1px solid #ececec;border-radius:6px;padding:14px 16px;font-size:13px;color:#333;line-height:1.75">
-        <strong>Website:</strong> No website found - your demo shows what is possible within 24 hours.<br><br>
-        <strong>Google Reviews:</strong> ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews - strong social proof that deserves a proper web presence.' : 'Opportunity to build and showcase your reputation online.'}<br><br>
-        <strong>Social Media:</strong> Consistent professional content can significantly increase your organic reach and attract new customers.<br><br>
-        <strong>Follow-Up System:</strong> Most local businesses lose repeat customers simply by not following up. An automated message system solves this with zero extra effort.
-      </div>
-    `;
-  }
-
-  // Replace preview URL in body with click-tracked URL
-  let bodyText = copy.body;
-  let bodyHtml = bodyText.split('\n').filter(l => l.trim()).map(l => {
-    let line = l;
-    if (trackingOpts?.clickUrl && previewUrl) {
-      const escaped = previewUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      line = line.replace(new RegExp(escaped, 'g'), trackingOpts.clickUrl);
-    }
-    return `<p style="margin:0 0 16px;font-size:14.5px;line-height:1.8;color:#2d2d2d">${line}</p>`;
-  }).join('');
-
-  // Tracking pixel HTML
+  // CTA button target: use click-tracked URL when available, otherwise the raw preview URL.
+  const ctaUrl = trackingOpts?.clickUrl || previewUrl;
   const pixelHtml = trackingOpts?.pixelHtml || '';
 
+  const auditLine = lead.rating !== 'N/A'
+    ? `Website: ${lead.website ? 'Upgrade opportunity, current site is leaving conversions on the table.' : 'No site found, your demo shows what can be live within 24 hours.'} Google reviews: ${lead.rating}/5 with ${lead.reviews} reviews, strong social proof that deserves a proper web presence. Follow-up: most local businesses lose repeat customers simply by not following up, automation solves that.`
+    : `A short audit of your current online presence, walked through with you on the call.`;
+
+  const samplesHtml = samples ? renderSamples({ samples, demoUrl: ctaUrl, auditLine }) : '';
+
+  const html = renderOutreachHtml({
+    bodyText: copy.body,
+    ctaUrl,
+    ctaLabel: 'View Your Demo Site',
+    checklist: [
+      'Your live demo website, already built',
+      'A ready-to-post Instagram caption for your business',
+      'A professional Google review response template',
+      'A customer follow-up message template',
+      'A full online presence audit'
+    ],
+    closingLine: 'All I ask in return is a 5-minute call so I can walk you through it. No pitch, no pressure.',
+    samplesHtml,
+    pixelHtml
+  });
+
   await resend.emails.send({
-    from: `Leif | WebForge <${RESEND_FROM}>`,
+    from: `Leif | Forge AI <${RESEND_FROM}>`,
     to: emailAddress,
+    replyTo: RESEND_FROM,
     subject: copy.subject,
     text: copy.body,
-    html: `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;max-width:600px;margin:0 auto">
-      <div style="background:#0a0a14;padding:18px 28px;border-radius:8px 8px 0 0;display:flex;align-items:center">
-        <span style="font-size:17px;font-weight:800;color:#fff;letter-spacing:.03em">WEB<span style="color:#00e5ff">FORGE</span></span>
-        <span style="margin-left:10px;font-size:11px;color:#555;letter-spacing:.05em">DIGITAL GROWTH</span>
-      </div>
-      <div style="background:#fff;padding:36px 28px;border:1px solid #e8e8e8;border-top:none">
-        ${bodyHtml}
-        ${samplesHtml}
-      </div>
-      <div style="background:#f8f8f8;padding:14px 28px;border:1px solid #e8e8e8;border-top:none;border-radius:0 0 8px 8px">
-        <p style="font-size:11px;color:#bbb;margin:0">WebForge - Digital growth for local businesses. Reply "unsubscribe" to opt out.</p>
-      </div>
-      ${pixelHtml}
-    </div>`
+    html
   });
 
   onProgress({ status: 'sent', message: `Sent to ${emailAddress} with 5 free deliverables` });
@@ -227,7 +198,7 @@ async function generateFollowUpEmail(lead, step, previousSubject) {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 600,
     messages: [{ role: 'user', content:
-`Write a follow-up email #${step} from Leif (WebForge) to the owner of "${lead.name}", a ${type}.
+`Write a follow-up email #${step} from Leif (Forge AI) to the owner of "${lead.name}", a ${type}.
 This is follow-up ${step} of 3. Previous subject was: "${previousSubject}"
 
 Angle for this follow-up: ${angle}
@@ -259,7 +230,7 @@ async function generateDMScript(lead, platform) {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 800,
     messages: [{ role: 'user', content:
-`Generate 3 different ${platformName} scripts from Leif (WebForge) to the owner of "${lead.name}", a ${type} at ${lead.address}.
+`Generate 3 different ${platformName} scripts from Leif (Forge AI) to the owner of "${lead.name}", a ${type} at ${lead.address}.
 Rating: ${lead.rating !== 'N/A' ? lead.rating + '/5 with ' + lead.reviews + ' reviews' : 'N/A'}.
 
 Each script should be:
@@ -294,7 +265,7 @@ async function generateABSubjects(lead, previewUrl) {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 200,
     messages: [{ role: 'user', content:
-`Generate 2 very different email subject line variations for a cold outreach email from Leif (WebForge) to "${lead.name}", a ${type}.
+`Generate 2 very different email subject line variations for a cold outreach email from Leif (Forge AI) to "${lead.name}", a ${type}.
 
 Variation A: More direct/specific - reference something about their business
 Variation B: More curiosity-driven - create intrigue
