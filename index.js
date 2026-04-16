@@ -14,7 +14,7 @@ const session = require('express-session');
 const { runScout }              = require('./agents/scout');
 const { buildDemoSite }         = require('./agents/builder');
 const { deployDemoSite: cfDeploy, isConfigured: cfConfigured } = require('./agents/cloudflare');
-const { sendOutreach, generateEmailPreview, generateFollowUpEmail, getSendStats } = require('./agents/outreach');
+const { sendOutreach, generateEmailPreview, generateFollowUpEmail, getSendStats, hasValidDemoUrl } = require('./agents/outreach');
 const { handleReply }           = require('./agents/closer');
 const { findEmail, hunterSearch, checkCredits } = require('./agents/emailfinder');
 const { findSocialMedia }       = require('./agents/socialfinder');
@@ -605,6 +605,10 @@ app.post('/api/outreach/send', async (req,res) => {
   if (!isValidEmail(emailAddress)) return res.status(400).json({ error:'Invalid email format' });
   if (!force && outreach.find(o=>o.leadId===id&&o.sentTo===emailAddress))
     return res.status(400).json({ error:'Already sent to this address for this lead.' });
+  // Refuse to send if no real demo site is built, otherwise the CTA
+  // button would open the login page instead of a demo.
+  if (!hasValidDemoUrl(lead.previewUrl))
+    return res.status(400).json({ error:`No demo site built for ${lead.name}. Build the site first so the email has something to link to.` });
   // Prevent duplicate concurrent sends
   const lockKey = `${id}:${emailAddress}`;
   if (sendingInProgress.has(lockKey))
@@ -613,8 +617,7 @@ app.post('/api/outreach/send', async (req,res) => {
   res.json({ status:'started' });
   emit(sessionId, { type:'outreach', status:'start', message:`📧 Preparing email for ${lead.name}...` });
   try {
-    // No tracking pixel or click redirect on initial outreach, direct URLs only
-    const previewUrl = lead.previewUrl||getBase();
+    const previewUrl = lead.previewUrl;
     const trackingOpts = {};
 
     const result = await sendOutreach(lead, previewUrl, emailAddress, p => emit(sessionId,{ type:'outreach',...p }), subject, body, trackingOpts, outreachType);
@@ -641,8 +644,8 @@ app.post('/api/outreach/batch', async (req,res) => {
   const { ids, sessionId } = req.body;
   const targets = (ids && ids.length ? ids : leads.map(l=>l.id))
     .map(id => findLead(id))
-    .filter(f => f && f.lead.foundEmail && !outreach.find(o=>o.leadId===f.lead.id&&o.sentTo===f.lead.foundEmail));
-  if (!targets.length) return res.status(400).json({ error:'No eligible leads (need email, not already sent)' });
+    .filter(f => f && f.lead.foundEmail && hasValidDemoUrl(f.lead.previewUrl) && !outreach.find(o=>o.leadId===f.lead.id&&o.sentTo===f.lead.foundEmail));
+  if (!targets.length) return res.status(400).json({ error:'No eligible leads (need email, built demo site, not already sent)' });
   batchOutreachRunning = true;
   res.json({ status:'started', count:targets.length });
   emit(sessionId, { type:'outreach_batch', status:'start', message:`🚀 Batch sending to ${targets.length} leads...` });
@@ -664,8 +667,7 @@ app.post('/api/outreach/batch', async (req,res) => {
         failed++;
         continue;
       }
-      // No tracking pixel or click redirect on initial outreach, direct URLs only
-      const previewUrl = lead.previewUrl||getBase();
+      const previewUrl = lead.previewUrl;
       const trackingOpts = {};
       const autoType = lead.website ? 'has_website' : 'no_website';
       const result = await sendOutreach(lead, previewUrl, email, () => {}, null, null, trackingOpts, autoType);
@@ -721,7 +723,7 @@ app.post('/api/outreach/followup-batch', async (req,res) => {
       const step = Math.min(prevFollowUps + 1, 3);
       const followUp = await generateFollowUpEmail(lead, step, prevOutreach?.subject || 'Your demo website');
       const trackingId = randomUUID();
-      const previewUrl = lead.previewUrl||getBase();
+      const previewUrl = lead.previewUrl;
       const trackingOpts = {
         pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
         clickUrl: `${getBase()}/c/${trackingId}`
@@ -784,7 +786,7 @@ app.post('/api/scheduled/process', async (req,res) => {
     if (!f) { s.status='cancelled'; continue; }
     try {
       // No tracking on scheduled initial sends, direct URLs only
-      const previewUrl = f.lead.previewUrl||getBase();
+      const previewUrl = f.lead.previewUrl;
       const trackingOpts = {};
       const autoType = f.lead.website ? 'has_website' : 'no_website';
       const result = await sendOutreach(f.lead, previewUrl, s.emailAddress, ()=>{}, s.subject||null, s.body||null, trackingOpts, autoType);
@@ -859,7 +861,7 @@ app.post('/api/sequences/process', async (req,res) => {
         const prevOutreach = outreach.find(o => o.leadId === seq.leadId);
         const followUp = await generateFollowUpEmail(f.lead, step.step, prevOutreach?.subject || 'Your demo website');
         const trackingId = randomUUID();
-        const previewUrl = f.lead.previewUrl||getBase();
+        const previewUrl = f.lead.previewUrl;
         const trackingOpts = {
           pixelHtml: `<img src="${getBase()}/t/${trackingId}.png" width="1" height="1" style="display:block;opacity:0" alt="" />`,
           clickUrl: `${getBase()}/c/${trackingId}`

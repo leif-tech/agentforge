@@ -119,7 +119,33 @@ async function generateEmailPreview(lead, previewUrl, outreachType) {
   return generateEmailCopy(lead, previewUrl, outreachType);
 }
 
+// A preview URL is only safe to send if it actually points at a demo site,
+// not the app base / login page / localhost. Without this guard, leads
+// whose builder never ran get an email whose CTA button opens the login page.
+function hasValidDemoUrl(url) {
+  const s = url && String(url).trim();
+  if (!s) return false;
+  if (/localhost|127\.0\.0\.1|ngrok/i.test(s)) return false;
+  if (s.includes('.pages.dev')) return true;
+  if (/\/sites\/[^/?#]+/.test(s)) return true;
+  try {
+    const u = new URL(s);
+    if (!u.hostname) return false;
+    if (!u.pathname || u.pathname === '/') return false;
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch { return false; }
+}
+
+class NoDemoError extends Error {
+  constructor(msg) { super(msg); this.code = 'NO_DEMO'; }
+}
+
 async function sendOutreach(lead, previewUrl, emailAddress, onProgress, subjectOverride, bodyOverride, trackingOpts, outreachType) {
+  // Refuse to send if there is no real demo to link to. This prevents the
+  // CTA button from opening the login page when the builder has not run yet.
+  if (!hasValidDemoUrl(previewUrl)) {
+    throw new NoDemoError(`No demo site built for ${lead.name}. Run the Builder first so the email has a real demo to link to.`);
+  }
   onProgress({ status: 'generating', message: `Generating samples for ${lead.name}...` });
 
   let samples;
@@ -281,4 +307,4 @@ Return ONLY valid JSON: {"subjectA":"...","subjectB":"..."}`
   return result;
 }
 
-module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples, generateFollowUpEmail, generateDMScript, generateABSubjects };
+module.exports = { sendOutreach, generateEmailPreview, generateFreeSamples, generateFollowUpEmail, generateDMScript, generateABSubjects, hasValidDemoUrl, NoDemoError };
