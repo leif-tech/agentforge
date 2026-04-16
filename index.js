@@ -8,6 +8,7 @@ const localEnv = path.join(__dirname, '.env');
 require('dotenv').config({ path: fs.existsSync(leadsEnv) ? leadsEnv : localEnv });
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const session = require('express-session');
 
 const { runScout }              = require('./agents/scout');
@@ -23,6 +24,13 @@ const PORT = process.env.PORT || 3000;
 const getBase = () => process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 
 app.use(cors());
+// Gzip responses. Skip SSE stream so progress events flush immediately.
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path.startsWith('/api/stream/')) return false;
+    return compression.filter(req, res);
+  }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(session({
@@ -152,6 +160,28 @@ const save = (f,d) => {
   fs.writeFileSync(tmp, JSON.stringify(d,null,2));
   fs.renameSync(tmp, f);
 };
+// Coalesce frequent writes (tracking pixel, click redirects) — one disk write per ~2s per file.
+const _saveTimers = new Map();
+const saveDebounced = (f, d, ms = 2000) => {
+  const existing = _saveTimers.get(f);
+  if (existing) clearTimeout(existing);
+  _saveTimers.set(f, setTimeout(() => {
+    _saveTimers.delete(f);
+    try { save(f, d); } catch (e) { console.error('[saveDebounced]', f, e.message); }
+  }, ms));
+};
+// Flush pending writes on shutdown so nothing is lost.
+const _flushPending = () => {
+  for (const [f, t] of _saveTimers) {
+    clearTimeout(t);
+    _saveTimers.delete(f);
+    try {
+      if (f === TF) save(f, tracking);
+    } catch (e) { console.error('[flush]', e.message); }
+  }
+};
+process.on('SIGINT', () => { _flushPending(); process.exit(0); });
+process.on('SIGTERM', () => { _flushPending(); process.exit(0); });
 let leads = load(LF), outreach = load(OF), replies = load(RF);
 let sequences = load(SEQ_F), scheduled = load(SCH_F), tracking = load(TF);
 
@@ -217,7 +247,7 @@ const PIXEL_BUF = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC
 
 app.get('/t/:trackingId.png', (req, res) => {
   const rec = tracking.find(t => t.trackingId === req.params.trackingId);
-  if (rec) { rec.opens.push({ at: new Date().toISOString() }); save(TF, tracking); }
+  if (rec) { rec.opens.push({ at: new Date().toISOString() }); saveDebounced(TF, tracking); }
   res.set('Content-Type', 'image/png');
   res.set('Cache-Control', 'no-store, no-cache');
   res.send(PIXEL_BUF);
@@ -225,7 +255,7 @@ app.get('/t/:trackingId.png', (req, res) => {
 
 app.get('/c/:trackingId', (req, res) => {
   const rec = tracking.find(t => t.trackingId === req.params.trackingId);
-  if (rec) { rec.clicks.push({ at: new Date().toISOString() }); save(TF, tracking); }
+  if (rec) { rec.clicks.push({ at: new Date().toISOString() }); saveDebounced(TF, tracking); }
   res.redirect(rec?.targetUrl || '/');
 });
 
@@ -260,16 +290,26 @@ app.use((req, res, next) => {
   res.redirect('/login');
 });
 app.use(express.static(path.join(__dirname,'public'), {
+  etag: true,
+  lastModified: true,
   setHeaders: (res, p) => {
     if (p.endsWith('.html')) {
       res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
       res.setHeader('Pragma','no-cache');
+    } else if (/\.(?:js|css|woff2?|ttf|otf|svg|png|jpg|jpeg|gif|webp|ico)$/i.test(p)) {
+      // Static assets — allow the browser to revalidate cheaply via ETag.
+      res.setHeader('Cache-Control','public, max-age=86400, stale-while-revalidate=604800');
     }
   }
 }));
 const SITES_DIR = path.join(DATA_ROOT,'sites');
 fs.mkdirSync(SITES_DIR,{recursive:true});
-app.use('/sites', express.static(SITES_DIR));
+app.use('/sites', express.static(SITES_DIR, {
+  etag: true,
+  setHeaders: (res, p) => {
+    if (p.endsWith('.html')) res.setHeader('Cache-Control','public, max-age=300');
+  }
+}));
 
 // ── SSE ───────────────────────────────────────────────────────────────────
 const sessions = {};

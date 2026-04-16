@@ -8,6 +8,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AgentForge</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23060810'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='13' fill='%2300e5ff'>AF</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -604,7 +607,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px">
       <div style="position:relative;flex:1;display:flex;align-items:center">
         <svg style="position:absolute;left:10px;pointer-events:none;opacity:.35" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="s-search" placeholder="Search leads..." oninput="drawScout()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
+        <input type="text" id="s-search" placeholder="Search leads..." oninput="onSearchScout()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
       </div>
       <button class="ab" onclick="document.getElementById('s-search').value='';drawScout()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
     </div>
@@ -704,7 +707,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px">
       <div style="position:relative;flex:1;display:flex;align-items:center">
         <svg style="position:absolute;left:10px;pointer-events:none;opacity:.35" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="b-search" placeholder="Search businesses..." oninput="drawB()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
+        <input type="text" id="b-search" placeholder="Search businesses..." oninput="onSearchB()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
       </div>
       <button class="ab" onclick="document.getElementById('b-search').value='';drawB()" style="font-size:10px;white-space:nowrap;opacity:.6">Clear</button>
     </div>
@@ -731,7 +734,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
       <div class="lbl">Send Outreach</div>
       <div class="f"><span>Select Lead</span>
         <div style="position:relative" id="o-lead-wrap">
-          <input type="text" id="o-lead-search" placeholder="Search leads..." autocomplete="off" oninput="filterLeadDrop()" onfocus="openLeadDrop()" style="width:100%;padding:7px 10px;font-size:12px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s" onfocusin="this.style.borderColor='var(--cyan)'" onfocusout="setTimeout(()=>{closeLeadDrop()},180)">
+          <input type="text" id="o-lead-search" placeholder="Search leads..." autocomplete="off" oninput="onSearchLeadDrop()" onfocus="openLeadDrop()" style="width:100%;padding:7px 10px;font-size:12px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s" onfocusin="this.style.borderColor='var(--cyan)'" onfocusout="setTimeout(()=>{closeLeadDrop()},180)">
           <div id="o-lead-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:var(--s1);border:1px solid rgba(255,255,255,.12);border-top:none;border-radius:0 0 8px 8px;z-index:50"></div>
           <input type="hidden" id="o-lead" value="">
         </div>
@@ -788,7 +791,7 @@ input[type=datetime-local]{width:100%;background:var(--s2);border:1px solid var(
     <div style="padding:8px 18px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div style="position:relative;flex:1;min-width:140px;display:flex;align-items:center">
         <svg style="position:absolute;left:10px;pointer-events:none;opacity:.35" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="o-search" placeholder="Search outreach log..." oninput="drawOut()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
+        <input type="text" id="o-search" placeholder="Search outreach log..." oninput="onSearchO()" style="width:100%;padding:7px 12px 7px 32px;font-size:11.5px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;transition:border .2s,background .2s" onfocus="this.style.borderColor='var(--cyan)';this.style.background='rgba(255,255,255,.07)'" onblur="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
       </div>
       <select id="o-date-filter" onchange="drawOut()" style="padding:7px 10px;font-size:11px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.04);color:var(--t1);outline:none;cursor:pointer">
         <option value="">All dates</option>
@@ -1020,6 +1023,22 @@ let collapsedCities=new Set();
 let sid='af_'+Math.random().toString(36).substr(2,9);
 let sse=null;
 
+// ── PERF UTILS ────────────────────────────────────────────────────────────
+// Coalesce rapid-fire calls to heavy render functions into one per frame.
+function rafBatch(fn){
+  let pending=false;
+  return function(){
+    if(pending)return;
+    pending=true;
+    requestAnimationFrame(()=>{ pending=false; try{fn.apply(this,arguments);}catch(e){console.error(e);} });
+  };
+}
+function debounce(fn,ms){
+  let t=null;
+  return function(){ const args=arguments,ctx=this; if(t)clearTimeout(t); t=setTimeout(()=>{t=null;fn.apply(ctx,args);},ms); };
+}
+const idle=(cb)=> (window.requestIdleCallback||((f)=>setTimeout(f,120)))(cb,{timeout:1500});
+
 const TYPES=[
   {v:'restaurant',l:'Restaurant',c:'Food & Drink'},{v:'cafe',l:'Cafe',c:'Food & Drink'},{v:'bakery',l:'Bakery',c:'Food & Drink'},
   {v:'bar',l:'Bar / Pub',c:'Food & Drink'},{v:'grocery_or_supermarket',l:'Grocery',c:'Food & Drink'},
@@ -1079,19 +1098,28 @@ function toggleCitySel(city,checked){
 
 async function boot(){
   initTypes();
+  // Critical path: leads + config. Everything else is pushed off the first paint.
   await loadLeads();
-  await loadTracking();
-  await checkCfg();
-  updateSendBadge();
   connect();
-  loadCreds();
+  idle(()=>{ checkCfg(); });
+  idle(()=>{ loadTracking(); });
+  idle(()=>{ updateSendBadge(); });
+  idle(()=>{ loadCreds(); });
 }
 
+// SSE reconnect with exponential backoff (1s → 2s → 4s → … capped at 30s).
+let _sseRetry=0, _sseTimer=null;
 function connect(){
+  if(_sseTimer){clearTimeout(_sseTimer);_sseTimer=null;}
   if(sse)sse.close();
   sse=new EventSource(`/api/stream/${sid}`);
-  sse.onmessage=e=>onSSE(JSON.parse(e.data));
-  sse.onerror=()=>setTimeout(connect,3000);
+  sse.onopen=()=>{ _sseRetry=0; };
+  sse.onmessage=e=>{ _sseRetry=0; onSSE(JSON.parse(e.data)); };
+  sse.onerror=()=>{
+    if(_sseTimer)return;
+    const delay=Math.min(30000, 1000*Math.pow(2,_sseRetry++)) + Math.floor(Math.random()*400);
+    _sseTimer=setTimeout(()=>{ _sseTimer=null; connect(); }, delay);
+  };
 }
 
 async function checkCfg(){
@@ -1755,6 +1783,39 @@ async function post(url,body){
   if(!r.ok){const e=await r.json().catch(()=>({error:'Request failed'}));const feed=url.includes('scout')?'s-feed':url.includes('email')||url.includes('finder')?'ef-feed':url.includes('builder')?'b-feed':url.includes('outreach')?'o-feed':url.includes('closer')?'c-feed':null;if(feed)log(feed,'✗ '+( e.error||'Request failed'),'er');const btns={'scout':'scout-btn','emailfinder':'ef-btn','builder':'b-btn','outreach':'o-send-btn','closer':'c-btn'};for(const[k,v]of Object.entries(btns)){if(url.includes(k))btn(v,null,false);}}
   return r;
 }
+
+// ── RENDER BATCHING & MEMOIZATION ────────────────────────────────────────
+// Coalesce same-frame redraws (huge win during SSE bursts / batch runs).
+const _drawScoutImpl=drawScout, _drawBImpl=drawB, _drawEFImpl=drawEF,
+      _drawOutImpl=drawOut, _drawPipelineImpl=drawPipeline,
+      _updStatsImpl=updStats, _renderLeadDropImpl=renderLeadDrop;
+drawScout   = rafBatch(_drawScoutImpl);
+drawB       = rafBatch(_drawBImpl);
+drawEF      = rafBatch(_drawEFImpl);
+drawOut     = rafBatch(_drawOutImpl);
+drawPipeline= rafBatch(_drawPipelineImpl);
+renderLeadDrop = rafBatch(_renderLeadDropImpl);
+
+// Memoized stats — avoid recomputing counts on unchanged leads.
+let _statsKey='';
+function _memoStats(){
+  const key=leads.length+'|'+leads.reduce((a,l)=>a+(l.foundEmail?1:0)*2+(l.siteFile?1:0)*4+(l.website?1:0)*8+(l.phone&&l.phone!=='N/A'?1:0),0);
+  if(key===_statsKey)return;
+  _statsKey=key;
+  _updStatsImpl();
+}
+updStats = rafBatch(_memoStats);
+
+// Debounced search handlers (fire after 120ms of inactivity instead of every keystroke).
+const onSearchScout   = debounce(()=>drawScout(), 120);
+const onSearchB       = debounce(()=>drawB(),     120);
+const onSearchO       = debounce(()=>drawOut(),   120);
+const onSearchLeadDrop= debounce(()=>{
+  const q=document.getElementById('o-lead-search').value;
+  const list=document.getElementById('o-lead-list');
+  if(list) list.style.display='block';
+  renderLeadDrop(q);
+}, 120);
 
 if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", boot); } else { boot(); }
 </script>
